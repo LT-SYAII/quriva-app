@@ -8,6 +8,14 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.2.5] — 2026-11-10
+
+### Fixed
+- In-reader "now playing" bar positioned above system navigation (respects
+  bottom safe-area inset) so it is no longer covered by the phone nav bar.
+- Hardened playback track selection to use surah/reciter identity (not just
+  URL) so toggling/starting audio always targets the correct surah.
+
 ## [0.2.4] — 2026-11-10
 
 ### Fixed

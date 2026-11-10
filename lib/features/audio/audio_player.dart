@@ -53,10 +53,9 @@ class ChapterAudioPlayer {
   /// Full player state (playing flag + processing state), for sheets.
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
 
-  /// Emits the surah id currently loaded/playing (or null).
-  Stream<int?> get currentSurahIdStream => _player.playerStateStream.map(
-        (_) => _currentSurahId,
-      );
+  /// Emits whenever surah context changes (piggybacks on player state stream).
+  Stream<int?> get currentSurahIdStream =>
+      _player.playerStateStream.map((_) => _currentSurahId);
 
   Duration get duration => _player.duration ?? Duration.zero;
 
@@ -74,6 +73,17 @@ class ChapterAudioPlayer {
 
   int? get currentRecitationId => _currentRecitationId;
 
+  bool _isSameTrack(int? surahId, int? recitationId, String url) {
+    if (surahId != null &&
+        recitationId != null &&
+        _currentSurahId != null &&
+        _currentRecitationId != null) {
+      return _currentSurahId == surahId &&
+          _currentRecitationId == recitationId;
+    }
+    return _loadedId == url;
+  }
+
   /// Plays [url] as the current surah track. Optionally tracks context so the
   /// player can auto-advance to the next surah when this one completes.
   Future<void> playSurah({
@@ -83,15 +93,17 @@ class ChapterAudioPlayer {
     int? recitationId,
     NextSurahResolver? nextResolver,
   }) async {
+    final same = _isSameTrack(surahId, recitationId, url);
+
     _currentSurahId = surahId ?? _currentSurahId;
     _currentRecitationId = recitationId ?? _currentRecitationId;
     _nextResolver = nextResolver ?? _nextResolver;
 
-    if (_loadedId != item.id) {
+    if (!same || _loadedId != url) {
       await _player.setAudioSource(
         AudioSource.uri(Uri.parse(url), tag: item),
       );
-      _loadedId = item.id;
+      _loadedId = url;
     }
     _currentItem = item;
     await _player.play();
@@ -106,7 +118,7 @@ class ChapterAudioPlayer {
   }
 
   Future<void> toggle(String url, MediaItem item) async {
-    if (playing && _loadedId == item.id) {
+    if (playing && _isSameTrack(null, null, url)) {
       await pause();
     } else {
       await play(url, item);
@@ -120,7 +132,7 @@ class ChapterAudioPlayer {
     int? recitationId,
     NextSurahResolver? nextResolver,
   }) async {
-    if (playing && _loadedId == item.id) {
+    if (playing && _isSameTrack(surahId, recitationId, url)) {
       await pause();
     } else {
       await playSurah(

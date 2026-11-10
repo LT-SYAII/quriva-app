@@ -30,6 +30,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _itemScrollController = ItemScrollController();
   final _itemPositionsListener = ItemPositionsListener.create();
   bool _didAnchorJump = false;
+  bool _hideBar = false;
 
   @override
   void initState() {
@@ -162,6 +163,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           final bookmarked = {
             for (final item in bookmarks) item.verseId,
           };
+          final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
           return StreamBuilder<PlayerState>(
             stream: globalAudioPlayer.playerStateStream,
             builder: (context, snapshot) {
@@ -172,50 +174,70 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               final buffering = activeThisSurah &&
                   (processing == ProcessingState.loading ||
                       processing == ProcessingState.buffering);
-              return ScrollablePositionedList.builder(
-                itemCount: verses.length + 1,
-                itemScrollController: _itemScrollController,
-                itemPositionsListener: _itemPositionsListener,
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 32),
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return _SurahHeader(
-                      title: surahTitle,
-                      reciterName: reciterName,
-                      audioAvailable: audioUrl != null && audioUrl.isNotEmpty,
-                      playing: playing && activeThisSurah,
-                      buffering: buffering,
-                      onPlay: () => _toggleSurahAudio(
-                        url: audioUrl,
-                        surahTitle:
-                            surahTitle.split(' · ').first,
-                        reciterName: reciterName,
-                        recitationId: reciterId,
-                      ),
-                    );
-                  }
-                  final verse = verses[index - 1];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: _VerseCard(
-                      verse: verse,
-                      isBookmarked: bookmarked.contains(verse.number),
-                      isAnchor: widget.anchorVerse == verse.number,
-                      fontSize: fontSize,
-                      isPlaying: playing && activeThisSurah,
-                      audioAvailable: audioUrl != null && audioUrl.isNotEmpty,
-                      onToggleBookmark: () => ref
-                          .read(databaseProvider)
-                          .toggleBookmark(widget.surahId, verse.number),
-                      onPlay: () => _toggleSurahAudio(
-                        url: audioUrl,
-                        surahTitle: surahTitle.split(' · ').first,
-                        reciterName: reciterName,
-                        recitationId: reciterId,
+              final showBar = globalAudioPlayer.active && !_hideBar;
+              return Stack(
+                children: [
+                  ScrollablePositionedList.builder(
+                    itemCount: verses.length + 1,
+                    itemScrollController: _itemScrollController,
+                    itemPositionsListener: _itemPositionsListener,
+                    padding: EdgeInsets.fromLTRB(
+                      14,
+                      8,
+                      14,
+                      showBar ? 110 + bottomInset : 32 + bottomInset,
+                    ),
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _SurahHeader(
+                          title: surahTitle,
+                          reciterName: reciterName,
+                          audioAvailable:
+                              audioUrl != null && audioUrl.isNotEmpty,
+                          playing: playing && activeThisSurah,
+                          buffering: buffering,
+                          onPlay: () => _toggleSurahAudio(
+                            url: audioUrl,
+                            surahTitle: surahTitle.split(' · ').first,
+                            reciterName: reciterName,
+                            recitationId: reciterId,
+                          ),
+                        );
+                      }
+                      final verse = verses[index - 1];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: _VerseCard(
+                          verse: verse,
+                          isBookmarked: bookmarked.contains(verse.number),
+                          isAnchor: widget.anchorVerse == verse.number,
+                          fontSize: fontSize,
+                          isPlaying: playing && activeThisSurah,
+                          audioAvailable:
+                              audioUrl != null && audioUrl.isNotEmpty,
+                          onToggleBookmark: () => ref
+                              .read(databaseProvider)
+                              .toggleBookmark(widget.surahId, verse.number),
+                          onPlay: () => _toggleSurahAudio(
+                            url: audioUrl,
+                            surahTitle: surahTitle.split(' · ').first,
+                            reciterName: reciterName,
+                            recitationId: reciterId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  if (showBar)
+                    Positioned(
+                      left: 14,
+                      right: 14,
+                      bottom: 12 + bottomInset,
+                      child: _NowPlayingBar(
+                        onHide: () => setState(() => _hideBar = true),
                       ),
                     ),
-                  );
-                },
+                ],
               );
             },
           );
@@ -234,6 +256,100 @@ String resolveSurahTitle(WidgetRef ref, int surahId) {
     }
   }
   return 'Surah $surahId';
+}
+
+class _NowPlayingBar extends StatelessWidget {
+  const _NowPlayingBar({required this.onHide});
+
+  final VoidCallback onHide;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<PlayerState>(
+      stream: globalAudioPlayer.playerStateStream,
+      initialData: null,
+      builder: (context, snapshot) {
+        final playing = snapshot.data?.playing ?? globalAudioPlayer.playing;
+        final item = globalAudioPlayer.currentItem;
+        final surahId = globalAudioPlayer.currentSurahId;
+        final reciterId = globalAudioPlayer.currentRecitationId;
+        final title = item?.title ??
+            (surahId != null ? 'Surah $surahId' : 'Recitation');
+        final artist = item?.artist ?? '';
+        return GlassPanel(
+          radius: 22,
+          blur: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            children: [
+              GlassBadge(
+                child: Icon(
+                  playing ? Icons.graphic_eq_rounded : Icons.music_note_rounded,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (artist.isNotEmpty)
+                      Text(
+                        artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: playing ? 'Pause' : 'Play',
+                icon: Icon(
+                  playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                ),
+                onPressed: () async {
+                  if (playing) {
+                    await globalAudioPlayer.pause();
+                  } else {
+                    final url = globalAudioPlayer.currentUrl;
+                    final currentItem = globalAudioPlayer.currentItem;
+                    if (url != null && currentItem != null) {
+                      await globalAudioPlayer.playSurah(
+                        url: url,
+                        item: currentItem,
+                        surahId: surahId,
+                        recitationId: reciterId,
+                      );
+                    }
+                  }
+                },
+              ),
+              IconButton(
+                tooltip: 'Hide player',
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: onHide,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _SurahHeader extends StatelessWidget {
