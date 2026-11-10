@@ -8,6 +8,13 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.2.3] — 2026-11-10
+
+### Fixed
+- Make startup resilient: `JustAudioBackground.init` failures no longer block
+  app launch, and uncaught widget errors render a visible message instead of a
+  blank black screen.
+
 ## [0.2.2] — 2026-11-10
 
 ### Fixed
