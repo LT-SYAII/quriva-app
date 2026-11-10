@@ -103,9 +103,12 @@ flutter build apk --release
 ```
 
 The CI workflow (`.github/workflows/release.yml`) runs analyze + tests and
-publishes a release APK for every `v*` tag. Note that the automated APK is
-signed with debug keys meant for easy evaluation; build and sign your own
-release for production use.
+publishes a versioned, release-signed APK
+(`quriva-v<version>-release.apk`) for every `v*` tag, so in-place updates work
+across releases. To build a locally signed release APK, provide an
+`android/key.properties` file (and keystore) as configured in
+`android/app/build.gradle.kts`; without it, local release builds fall back to
+debug signing.
 
 ## Project structure
 

@@ -8,6 +8,15 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.2.1] — 2026-11-10
+
+### Changed
+- Release APKs are now signed with a persistent release keystore in CI so
+  installs can be updated in-place over future releases.
+- Release artifact is published with a versioned name:
+  `quriva-v<version>-release.apk` (instead of the generic `app-release.apk`).
+  `app-release.apk` remains the local build output path.
+
 ## [0.2.0] — 2026-11-10
 
 ### Added
