@@ -17,6 +17,10 @@ cached locally on the device. The app ships **no bundled Quran data**, keeps
 | Audio        | just_audio (streaming, per-surah) |
 | License      | MIT (code) — content attribution comes from their own licenses, see below |
 
+[![CI](https://github.com/LT-SYAII/quriva-app/actions/workflows/ci.yml/badge.svg)](https://github.com/LT-SYAII/quriva-app/actions/workflows/ci.yml)
+[![Release](https://github.com/LT-SYAII/quriva-app/actions/workflows/release.yml/badge.svg)](https://github.com/LT-SYAII/quriva-app/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/code%20license-MIT-green.svg)](LICENSE)
+
 ## Features (v0.1.0)
 
 - **Surah index** with simple/Arabic names, translated titles (EN/ID),
