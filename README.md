@@ -22,16 +22,23 @@ cached locally on the device. The app ships **no bundled Quran data**, keeps
 [![Release](https://github.com/LT-SYAII/quriva-app/actions/workflows/release.yml/badge.svg)](https://github.com/LT-SYAII/quriva-app/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/code%20license-MIT-green.svg)](LICENSE)
 
-## Features (v0.1.0)
+## Features (v0.2.0)
 
 - **Surah index** with simple/Arabic names, translated titles (EN/ID),
   revelation place and verse counts.
+- **Per-reciter surah list** — each reciter has their own available-surah
+  catalog (sourced live from Quran.com); filter the index to "Audio only" and
+  see per-surah availability at a glance.
 - **Reader** — Uthmani Arabic text, selectable, adjustable font size,
   with a translation of your choice.
 - **Translations** — pick from the live Quran.com translation catalogue
   (searchable; English and Indonesian entries are highlighted).
-- **Reciters** — choose a reciter; play the full surah audio (streamed from
-  Quranicaudio) with position/seek UI and an in-reader mini-bar.
+- **Reciters & background audio** — choose a reciter; play the full surah
+  (streamed from Quranicaudio) with a persistent media notification and
+  lock-screen controls. Playback continues when you leave the reader or close
+  the app UI, with a floating in-reader mini bar.
+- **Liquid glass UI** — a monochrome black & white theme with frosted,
+  translucent surfaces and a floating glass navigation bar, plus a new app icon.
 - **Surah info** — background of each surah (source: Tafhim al-Qur'an, via
   Quran.com), rendered as plain text with clear attribution.
 - **Global search** — search by Arabic text or translation keywords
@@ -52,7 +59,7 @@ cached locally on the device. The app ships **no bundled Quran data**, keeps
   endpoint currently returns 404 on Quran.com's v4 API; it is intentionally
   not shipped until the endpoint works again.
 - **Word-by-word** study mode.
-- **Background audio** playback and per-ayah recitation mode.
+- **Per-ayah recitation** mode and finer playback controls.
 - Multiple simultaneous translations per ayah.
 - Tajweed/mushaf page mode.
 - Optional account sync (self-hosted, end-to-end encrypted) for bookmarks

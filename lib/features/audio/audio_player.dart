@@ -1,42 +1,62 @@
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
-/// Chapter audio playback (a single mp3 per surah served by quran.com /
-/// Quranicaudio). Managed per screen — closed when the widget is disposed.
+/// App-lifetime audio player.
+///
+/// Deliberately NOT scoped to a screen: when the user leaves the reader —
+/// or closes the app UI entirely — playback keeps going and a persistent
+/// media notification (play/pause/seek) stays available on Android.
+final ChapterAudioPlayer globalAudioPlayer = ChapterAudioPlayer();
+
 class ChapterAudioPlayer {
   ChapterAudioPlayer() : _player = AudioPlayer();
 
   final AudioPlayer _player;
-  bool _playing = false;
-  String? _loadedUrl;
+  String? _loadedId;
+  MediaItem? _currentItem;
+
+  Stream<bool> get playingStream =>
+      _player.playerStateStream.map((state) => state.playing);
 
   Stream<Duration> get positionStream => _player.positionStream;
-  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
-  Duration get duration => _player.duration ?? Duration.zero;
-  bool get playing => _playing;
 
-  Future<void> play(String url) async {
-    if (_loadedUrl != url) {
-      await _player.setUrl(url);
-      _loadedUrl = url;
+  /// Full player state (playing flag + processing state), for sheets.
+  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+
+  Duration get duration => _player.duration ?? Duration.zero;
+
+  bool get playing => _player.playing;
+
+  bool get active => _loadedId != null;
+
+  /// MediaItem currently loaded (used by the mini player bar for title/artist).
+  MediaItem? get currentItem => _currentItem;
+
+  /// Streaming url of the currently loaded recitation, or null when idle.
+  String? get currentUrl => _loadedId;
+
+  Future<void> play(String url, MediaItem item) async {
+    if (_loadedId != item.id) {
+      await _player.setAudioSource(
+        AudioSource.uri(Uri.parse(url), tag: item),
+      );
+      _loadedId = item.id;
     }
+    _currentItem = item;
     await _player.play();
-    _playing = true;
   }
 
   Future<void> pause() async {
     await _player.pause();
-    _playing = false;
   }
 
-  Future<void> toggle(String url) async {
-    if (_playing) {
+  Future<void> toggle(String url, MediaItem item) async {
+    if (playing) {
       await pause();
     } else {
-      await play(url);
+      await play(url, item);
     }
   }
 
   Future<void> seek(Duration position) => _player.seek(position);
-
-  Future<void> dispose() async => _player.dispose();
 }

@@ -131,4 +131,34 @@ void main() {
     expect(page.results.first.translations.first.name, 'M. Pickthall');
     client.close();
   });
+
+  test('client parses per-reciter catalog', () async {
+    final client = QuranComClient(
+      client: _mockClient(
+        '/chapter_recitations/7',
+        const {},
+        {
+          'audio_files': [
+            {
+              'id': 911,
+              'chapter_id': 1,
+              'audio_url':
+                  'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/1.mp3',
+            },
+            {
+              'id': 17774,
+              'chapter_id': 112,
+              'audio_url':
+                  'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/112.mp3',
+            },
+          ],
+        },
+      ),
+    );
+    final catalog = await client.fetchReciterCatalog(7);
+    expect(catalog, containsPair(112, endsWith('112.mp3')));
+    expect(catalog.length, 2);
+    client.close();
+  });
+
 }

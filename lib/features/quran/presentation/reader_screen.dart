@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:quriva/core/database/app_database.dart';
 import 'package:quriva/features/audio/audio_player.dart';
 import 'package:quriva/features/quran/data/quran_repository.dart';
 import 'package:quriva/features/quran/domain/quran_models.dart';
 import 'package:quriva/features/settings/presentation/preferences.dart';
+import 'package:quriva/shared/widgets/glass.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class ReaderScreen extends ConsumerStatefulWidget {
@@ -26,9 +28,8 @@ class ReaderScreen extends ConsumerStatefulWidget {
 class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _itemScrollController = ItemScrollController();
   final _itemPositionsListener = ItemPositionsListener.create();
-  ChapterAudioPlayer? _audioPlayer;
   bool _didAnchorJump = false;
-  bool _showAudioBar = false;
+  bool _barHidden = false;
 
   @override
   void initState() {
@@ -42,17 +43,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final first = positions
         .reduce((a, b) => a.itemLeadingEdge < b.itemLeadingEdge ? a : b)
         .index;
-    if (first < 2) return; // index 0 = header, 1 = first verse still at top.
+    if (first < 2) return;
     unawaited(
       ref.read(databaseProvider).saveProgress(widget.surahId, first),
     );
-  }
-
-  @override
-  void dispose() {
-    _itemPositionsListener.itemPositions.removeListener(_saveProgress);
-    _audioPlayer?.dispose();
-    super.dispose();
   }
 
   void _jumpToAnchorOnce() {
@@ -65,15 +59,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     });
   }
 
-  Future<void> _openAudioSheet() async {
-    setState(() => _showAudioBar = true);
-    final player = _audioPlayer ?? (_audioPlayer = ChapterAudioPlayer());
+  Future<void> _openAudioSheet(
+    BuildContext context,
+    String surahTitle,
+    String reciterName,
+  ) async {
     await showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
-      builder: (context) => _AudioSheet(
-        player: player,
+      isScrollControlled: true,
+      builder: (sheetContext) => _AudioSheet(
         surahId: widget.surahId,
+        surahTitle: surahTitle,
+        reciterName: reciterName,
       ),
     );
     if (mounted) setState(() {});
@@ -85,6 +82,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final reciterId = ref.watch(reciterIdProvider);
     final fontSize = ref.watch(arabicFontSizeProvider);
     final surah = ref.watch(readerProvider((widget.surahId, translationId)));
+    final reciters = ref.watch(recitersProvider('en'));
+    final reciterName = reciterNameFor(reciters.value, reciterId);
+    final surahTitle = resolveSurahTitle(ref, widget.surahId);
 
     return Scaffold(
       appBar: AppBar(
@@ -92,12 +92,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         actions: [
           IconButton(
             tooltip: 'Play surah audio',
-            icon: const Icon(Icons.headphones_outlined),
-            onPressed: surah.hasValue ? _openAudioSheet : null,
+            icon: const Icon(Icons.headphones_rounded),
+            onPressed: surah.hasValue
+                ? () => _openAudioSheet(context, surahTitle, reciterName)
+                : null,
           ),
           IconButton(
             tooltip: 'Surah info',
-            icon: const Icon(Icons.info_outline),
+            icon: const Icon(Icons.info_outline_rounded),
             onPressed: () => context.push('/surah-info/${widget.surahId}'),
           ),
         ],
@@ -116,21 +118,21 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           final bookmarked = {
             for (final item in bookmarks) item.verseId,
           };
-          return Column(
+          return Stack(
             children: [
-              Expanded(
-                child: ScrollablePositionedList.builder(
-                  itemCount: verses.length + 1,
-                  itemScrollController: _itemScrollController,
-                  itemPositionsListener: _itemPositionsListener,
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      final title = resolveSurahTitle(context, ref, widget.surahId);
-                      return _SurahHeader(title: title);
-                    }
-                    final verse = verses[index - 1];
-                    return _VerseCard(
+              ScrollablePositionedList.builder(
+                itemCount: verses.length + 1,
+                itemScrollController: _itemScrollController,
+                itemPositionsListener: _itemPositionsListener,
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 40),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return _SurahHeader(title: surahTitle);
+                  }
+                  final verse = verses[index - 1];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: _VerseCard(
                       verse: verse,
                       isBookmarked: bookmarked.contains(verse.number),
                       isAnchor: widget.anchorVerse == verse.number,
@@ -138,19 +140,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       onToggleBookmark: () => ref
                           .read(databaseProvider)
                           .toggleBookmark(widget.surahId, verse.number),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
-              if (_showAudioBar && _audioPlayer != null)
-                _AudioBar(
-                  player: _audioPlayer!,
-                  surahId: widget.surahId,
-                  reciterId: reciterId,
-                  onClose: () {
-                    unawaited(_audioPlayer!.pause());
-                    setState(() => _showAudioBar = false);
-                  },
+              if (globalAudioPlayer.active && !_barHidden)
+                Positioned(
+                  left: 14,
+                  right: 14,
+                  bottom: 14,
+                  child: _FloatingAudioBar(
+                    onHide: () => setState(() => _barHidden = true),
+                  ),
                 ),
             ],
           );
@@ -158,14 +159,15 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       ),
     );
   }
+
 }
 
-String resolveSurahTitle(BuildContext context, WidgetRef ref, int surahId) {
+String resolveSurahTitle(WidgetRef ref, int surahId) {
   final language = ref.watch(appLanguageProvider);
   final chapters = ref.watch(chaptersProvider(language)).value;
   for (final chapter in chapters ?? const <Chapter>[]) {
     if (chapter.id == surahId) {
-      return '${chapter.nameSimple} · ${chapter.nameArabic}';
+      return '${chapter.nameSimple} · ${chapter.translatedName}';
     }
   }
   return 'Surah $surahId';
@@ -181,22 +183,19 @@ class _SurahHeader extends StatelessWidget {
     final parts = title.split(' · ');
     final latin = parts.isEmpty ? 'Surah' : parts.first;
     final arabic = parts.length > 1 ? parts.last : '';
-    return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            if (arabic.isNotEmpty)
-              Text(
-                arabic,
-                textDirection: TextDirection.rtl,
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-            if (arabic.isNotEmpty) const SizedBox(height: 8),
-            Text(latin, style: Theme.of(context).textTheme.titleLarge),
-          ],
-        ),
+    return GlassPanel(
+      radius: 26,
+      child: Column(
+        children: [
+          if (arabic.isNotEmpty)
+            Text(
+              arabic,
+              textDirection: TextDirection.rtl,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+          const SizedBox(height: 4),
+          Text(latin, style: Theme.of(context).textTheme.titleMedium),
+        ],
       ),
     );
   }
@@ -220,118 +219,98 @@ class _VerseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      color: isAnchor ? scheme.primaryContainer : null,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: scheme.primary.withValues(alpha: .12),
-                  foregroundColor: scheme.primary,
-                  child: Text(
-                    '${verse.number}',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
+    return GlassPanel(
+      radius: 22,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              GlassBadge(child: Text('${verse.number}')),
+              const Spacer(),
+              IconButton(
+                tooltip: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
+                icon: Icon(
+                  isBookmarked ? Icons.bookmark : Icons.bookmark_border_rounded,
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
-                  icon: Icon(
-                    isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
-                  ),
-                  onPressed: onToggleBookmark,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            SelectableText(
-              verse.arabic,
-              textAlign: TextAlign.right,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(fontSize: fontSize, height: 2),
-            ),
-            if (verse.translation.trim().isNotEmpty) ...[
-              const SizedBox(height: 14),
-              SelectableText(
-                verse.translation,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.6,
-                    ),
+                onPressed: onToggleBookmark,
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SelectableText(
+            verse.arabic,
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(fontSize: fontSize, height: 2, color: scheme.onSurface),
+          ),
+          if (verse.translation.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            SelectableText(
+              verse.translation,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    height: 1.6,
+                  ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _AudioBar extends ConsumerWidget {
-  const _AudioBar({
-    required this.player,
-    required this.surahId,
-    required this.reciterId,
-    required this.onClose,
-  });
+/// Floating frosted mini player, pinned to the bottom of the reader while a
+/// recitation is loaded. Reflects whatever the *global* player is doing —
+/// including a surah loaded from another screen.
+class _FloatingAudioBar extends StatelessWidget {
+  const _FloatingAudioBar({required this.onHide});
 
-  final ChapterAudioPlayer player;
-  final int surahId;
-  final int reciterId;
-  final VoidCallback onClose;
+  final VoidCallback onHide;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final url = globalAudioPlayer.currentUrl;
+    final item = globalAudioPlayer.currentItem;
     return StreamBuilder<bool>(
-      stream: player.playerStateStream.map((state) => state.playing),
-      initialData: false,
+      stream: globalAudioPlayer.playingStream,
+      initialData: globalAudioPlayer.playing,
       builder: (context, snapshot) {
         final playing = snapshot.data ?? false;
-        return Container(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        return GlassPanel(
+          radius: 24,
+          blur: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           child: Row(
             children: [
-              IconButton(
-                tooltip: playing ? 'Pause' : 'Play',
-                icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                onPressed: () async {
-                  final url = await ref.read(
-                    chapterAudioUrlProvider((surahId, reciterId)).future,
-                  );
-                  if (url != null) await player.toggle(url);
-                },
+              GlassBadge(
+                child: Icon(
+                  playing ? Icons.graphic_eq_rounded : Icons.music_note_rounded,
+                  size: 16,
+                ),
               ),
-              IconButton(
-                tooltip: 'Stop & hide',
-                icon: const Icon(Icons.close),
-                onPressed: onClose,
-              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  playing
-                      ? 'Playing surah audio (reciter #$reciterId)'
-                      : 'Audio paused',
+                  item?.title ?? 'Recitation',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium,
                 ),
               ),
               IconButton(
-                tooltip: 'Controls',
-                icon: const Icon(Icons.queue_music_outlined),
-                onPressed: () => showModalBottomSheet<void>(
-                  context: context,
-                  showDragHandle: true,
-                  builder: (context) => _AudioSheet(
-                    player: player,
-                    surahId: surahId,
-                  ),
+                tooltip: playing ? 'Pause' : 'Play',
+                icon: Icon(
+                  playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 ),
+                onPressed: (url == null || item == null)
+                    ? null
+                    : () => globalAudioPlayer.toggle(url, item),
+              ),
+              IconButton(
+                tooltip: 'Hide mini player',
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: onHide,
               ),
             ],
           ),
@@ -342,47 +321,64 @@ class _AudioBar extends ConsumerWidget {
 }
 
 class _AudioSheet extends ConsumerWidget {
-  const _AudioSheet({required this.player, required this.surahId});
+  const _AudioSheet({
+    required this.surahId,
+    required this.surahTitle,
+    required this.reciterName,
+  });
 
-  final ChapterAudioPlayer player;
   final int surahId;
+  final String surahTitle;
+  final String reciterName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reciterId = ref.watch(reciterIdProvider);
-    final audioUrl = ref.watch(chapterAudioUrlProvider((surahId, reciterId)));
-    final resolvedUrl = audioUrl.value;
+    final catalog = ref.watch(reciterCatalogProvider(reciterId));
+    final url = catalog.value?[surahId];
+    final item = url == null
+        ? null
+        : MediaItem(
+            id: url,
+            album: 'Quriva',
+            title: surahTitle,
+            artist: reciterName,
+            playable: true,
+          );
 
     return StreamBuilder<PlayerState>(
-      stream: player.playerStateStream,
+      stream: globalAudioPlayer.playerStateStream,
       builder: (context, stateSnapshot) {
         final playing = stateSnapshot.data?.playing ?? false;
         final processing = stateSnapshot.data?.processingState;
         return StreamBuilder<Duration>(
-          stream: player.positionStream,
+          stream: globalAudioPlayer.positionStream,
           builder: (context, positionSnapshot) {
             final position = positionSnapshot.data ?? Duration.zero;
-            final durationMs = player.duration.inMilliseconds;
-            final max =
-                durationMs > 0 ? durationMs.toDouble() : 1.0;
-            final positionMs = position.inMilliseconds.clamp(0, durationMs > 0 ? durationMs : 1);
+            final durationMs = globalAudioPlayer.duration.inMilliseconds;
+            final max = durationMs > 0 ? durationMs.toDouble() : 1.0;
+            final positionMs = position.inMilliseconds
+                .clamp(0, durationMs > 0 ? durationMs : 1);
             return Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Surah audio',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text(surahTitle,
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('Reciter #$reciterId'),
+                  Text(
+                    reciterName,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
                   const SizedBox(height: 12),
                   Slider(
                     value: positionMs.toDouble().clamp(0, max),
                     max: max,
                     onChanged: durationMs > 0
-                        ? (value) => player.seek(
+                        ? (value) => globalAudioPlayer.seek(
                               Duration(milliseconds: value.round()),
                             )
                         : null,
@@ -391,22 +387,24 @@ class _AudioSheet extends ConsumerWidget {
                     children: [
                       Text(_clock(position)),
                       const Spacer(),
-                      Text(_clock(player.duration)),
+                      Text(_clock(globalAudioPlayer.duration)),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton.filled(
-                        tooltip: playing ? 'Pause' : 'Play',
-                        icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                        onPressed: resolvedUrl == null
-                            ? null
-                            : () => player.toggle(resolvedUrl),
-                      ),
-                    ],
+                  IconButton.filled(
+                    tooltip: playing ? 'Pause' : 'Play',
+                    icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                    onPressed: (url == null || item == null)
+                        ? null
+                        : () => globalAudioPlayer.toggle(url, item),
                   ),
+                  if (url == null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 6),
+                      child: Text(
+                        'This surah is not available on the selected reciter.',
+                      ),
+                    ),
                   if (processing == ProcessingState.loading ||
                       processing == ProcessingState.buffering)
                     const Padding(
@@ -444,7 +442,7 @@ class _ReaderError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 56),
+            const Icon(Icons.cloud_off_rounded, size: 56),
             const SizedBox(height: 16),
             Text(
               'Could not load verses',

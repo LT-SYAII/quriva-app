@@ -110,6 +110,18 @@ class QuranComClient {
     ];
   }
 
+  /// Full per-reciter catalog: every surah this reciter has recorded,
+  /// mapped chapterId → mp3 url. Powers the "filter surah by reciter" list.
+  Future<Map<int, String>> fetchReciterCatalog(int recitationId) async {
+    final data = await _getJson('/chapter_recitations/$recitationId');
+    final files = data['audio_files'] as List? ?? const [];
+    return {
+      for (final file in files)
+        (file as Map<String, dynamic>)['chapter_id'] as int? ?? 0:
+            file['audio_url'] as String? ?? '',
+    }..remove(0);
+  }
+
   Future<List<TranslationResource>> fetchTranslations(String language) async {
     final data = await _getJson(
       '/resources/translations',

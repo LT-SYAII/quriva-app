@@ -6,6 +6,24 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ## [Unreleased]
 
 ### Changed
+- (nothing yet)
+
+## [0.2.0] — 2026-11-10
+
+### Added
+- New Quriva app icon (adaptive launcher icon).
+- Monochrome black & white "liquid glass" UI: frosted translucent surfaces,
+  hairline borders and a floating glass navigation bar.
+- Per-reciter surah catalog: the home screen shows how many surahs a reciter
+  has recorded, lists/filters surahs by the selected reciter ("Audio only"),
+  and indicates availability per surah.
+- Background recitation playback with a persistent media notification and
+  lock-screen controls (just_audio_background). A floating in-reader mini bar
+  stays in sync with the global player.
+
+### Changed
+- Player is now app-lifetime/global so audio continues when leaving the reader
+  or closing the app UI.
 - Android-first: removed iOS targets and references from the repository and
   documentation. iOS may return later via App Store/TestFlight.
 

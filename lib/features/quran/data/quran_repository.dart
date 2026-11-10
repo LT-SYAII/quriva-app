@@ -139,6 +139,11 @@ class QuranRepository {
   Future<List<Reciter>> getReciters(String language) =>
       client.fetchRecitations(language);
 
+  /// chapterId → mp3 url for the given reciter (from the reciter's own
+  /// catalog on Quran.com). Kept in memory only; lists are small.
+  Future<Map<int, String>> getReciterCatalog(int recitationId) =>
+      client.fetchReciterCatalog(recitationId);
+
   Future<List<TranslationResource>> getTranslations(String language) =>
       client.fetchTranslations(language);
 
@@ -190,6 +195,32 @@ final recitersProvider =
   return ref.watch(quranRepositoryProvider).getReciters(language);
 });
 
+/// chapterId → audio url for one reciter.
+final reciterCatalogProvider =
+    FutureProvider.family<Map<int, String>, int>((ref, recitationId) {
+  return ref.watch(quranRepositoryProvider).getReciterCatalog(recitationId);
+});
+
+/// reciterId → how many surahs that reciter has published.
+final reciterCountsProvider = FutureProvider<Map<int, int>>((ref) async {
+  final reciters = await ref.watch(recitersProvider('en').future);
+  final results = await Future.wait([
+    for (final reciter in reciters)
+      () async {
+        try {
+          final catalog =
+              await ref.watch(reciterCatalogProvider(reciter.id).future);
+          return (id: reciter.id, count: catalog.length);
+        } on QuranComApiException {
+          return (id: reciter.id, count: 0);
+        }
+      }(),
+  ]);
+  return {
+    for (final (id: id_, count: count_) in results) id_: count_,
+  };
+});
+
 final translationsProvider =
     FutureProvider.family<List<TranslationResource>, String>((ref, language) {
   return ref.watch(quranRepositoryProvider).getTranslations(language);
@@ -198,3 +229,20 @@ final translationsProvider =
 final readingProgressProvider = FutureProvider<ReadingProgressData?>(
   (ref) => ref.watch(databaseProvider).loadProgress(),
 );
+
+/// Common helper so home/bookmarks/reader show the same reciter identity.
+String reciterNameFor(List<Reciter>? reciters, int id) {
+  for (final reciter in reciters ?? const <Reciter>[]) {
+    if (reciter.id == id) return reciter.displayName;
+  }
+  return 'Reciter #$id';
+}
+
+/// Subtitle for reciter lists, e.g. "murattal · 114 surahs".
+String reciterSubtitle(Reciter reciter, Map<int, int>? counts) {
+  final count = counts?[reciter.id];
+  final countText = count == null ? '···' : '$count';
+  final style = reciter.style;
+  final hasStyle = style != null && style.isNotEmpty;
+  return hasStyle ? '$style · $countText surahs' : '$countText surahs';
+}
