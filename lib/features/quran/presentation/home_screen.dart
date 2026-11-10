@@ -288,6 +288,7 @@ class _ReciterChip extends ConsumerWidget {
     };
     return GlassPanel(
       radius: 20,
+      blur: 0,
       onTap: onTap,
       child: Row(
         children: [
@@ -366,7 +367,7 @@ class _ReciterSheet extends ConsumerWidget {
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 4),
               title: Text(reciter.name),
-              subtitle: Text(reciterSubtitle(reciter, counts.value)),
+              subtitle: Text(reciterSubtitle(reciter, counts)),
               trailing: selected == reciter.id ? const Icon(Icons.check) : null,
               onTap: () {
                 ref.read(reciterIdProvider.notifier).setId(reciter.id);
@@ -392,6 +393,7 @@ class _SurahTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: GlassPanel(
+        blur: 0,
         onTap: () => context.push('/surah/${chapter.id}'),
         child: Row(
           children: [

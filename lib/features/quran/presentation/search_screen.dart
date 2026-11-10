@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quriva/features/quran/data/quran_repository.dart';
 import 'package:quriva/features/quran/domain/quran_models.dart';
+import 'package:quriva/shared/utils/text_utils.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -166,8 +167,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         final result = results[index];
         final translation = result.translations.isEmpty
             ? ''
-            : result.translations.first.text
-                .replaceAll(RegExp(r'</?em>'), '');
+            : cleanTranslationText(
+                result.translations.first.text
+                    .replaceAll(RegExp(r'</?em>'), ''),
+              );
         final parts = result.verseKey.split(':');
         final surahId = int.tryParse(parts.first) ?? 0;
         final verseId = int.tryParse(parts.last) ?? 0;

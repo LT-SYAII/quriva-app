@@ -43,22 +43,32 @@ class GlassPanel extends StatelessWidget {
       ),
     );
 
-    final panel = ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: DecoratedBox(
-          decoration: fill,
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(onTap: onTap, child: Padding(
-              padding: padding,
-              child: child,
-            )),
-          ),
-        ),
+    final content = Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(radius),
+        child: Padding(padding: padding, child: child),
       ),
     );
+
+    // BackdropFilter blur is expensive; skip it for list items (blur <= 0)
+    // and use a plain translucent surface to keep scrolling smooth.
+    final Widget panel;
+    if (blur > 0) {
+      panel = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: DecoratedBox(decoration: fill, child: content),
+        ),
+      );
+    } else {
+      panel = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: DecoratedBox(decoration: fill, child: content),
+      );
+    }
 
     return Padding(padding: margin, child: panel);
   }

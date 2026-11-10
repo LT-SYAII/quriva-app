@@ -8,6 +8,20 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.2.4] — 2026-11-10
+
+### Fixed
+- Strip Quran.com footnote/HTML markup from translation text (e.g. raw
+  `<sup foot_note=...>` tags no longer appear) in reader and search.
+
+### Changed
+- Audio controls moved to the ayah/reader section: per-ayah play/pause buttons
+  and a surah header play control (surah-level recitation), with auto-advance
+  to the next surah when playback completes.
+- Performance optimizations: disabled expensive backdrop blur on list/verse
+  tiles and removed the mass per-reciter catalog prefetch to reduce jank and
+  network load.
+
 ## [0.2.3] — 2026-11-10
 
 ### Fixed

@@ -202,23 +202,17 @@ final reciterCatalogProvider =
 });
 
 /// reciterId → how many surahs that reciter has published.
-final reciterCountsProvider = FutureProvider<Map<int, int>>((ref) async {
-  final reciters = await ref.watch(recitersProvider('en').future);
-  final results = await Future.wait([
-    for (final reciter in reciters)
-      () async {
-        try {
-          final catalog =
-              await ref.watch(reciterCatalogProvider(reciter.id).future);
-          return (id: reciter.id, count: catalog.length);
-        } on QuranComApiException {
-          return (id: reciter.id, count: 0);
-        }
-      }(),
-  ]);
-  return {
-    for (final (id: id_, count: count_) in results) id_: count_,
-  };
+/// Lightweight: only reports counts for catalogs already loaded in memory to
+/// avoid firing a network request per reciter.
+final reciterCountsProvider = Provider<Map<int, int>>((ref) {
+  final reciters = ref.watch(recitersProvider('en')).value;
+  if (reciters == null) return const <int, int>{};
+  final counts = <int, int>{};
+  for (final reciter in reciters) {
+    final len = ref.watch(reciterCatalogProvider(reciter.id)).value?.length;
+    if (len != null) counts[reciter.id] = len;
+  }
+  return counts;
 });
 
 final translationsProvider =
