@@ -2,7 +2,8 @@
 
 **Read. Reflect. Live.**
 
-Quriva is an open-source, offline-friendly Quran reader for Android and iOS.
+Quriva is an open-source, offline-friendly Quran reader for Android. It puts
+focus on reading experience first.
 All Quran content — Arabic Uthmani text, translations, surah info, search and
 recitations — is fetched live from the **official Quran.com API (v4)** and
 cached locally on the device. The app ships **no bundled Quran data**, keeps
@@ -10,7 +11,7 @@ cached locally on the device. The app ships **no bundled Quran data**, keeps
 
 |              | |
 |--------------|-|
-| Platform     | Android & iOS (Flutter) |
+| Platform     | Android (Flutter) |
 | Data source  | [Quran.com API v4](https://quran.com/api) + [Quranicaudio](https://quranicaudio.com) streaming |
 | State        | Riverpod 3 |
 | Storage      | Drift (SQLite) for cache, bookmarks & reading progress |
@@ -56,7 +57,7 @@ cached locally on the device. The app ships **no bundled Quran data**, keeps
 - Tajweed/mushaf page mode.
 - Optional account sync (self-hosted, end-to-end encrypted) for bookmarks
   across devices — strictly opt-in.
-- Desktop/web builds after mobile stabilises.
+- Desktop/web builds after Android stabilises.
 
 ## Data sources & licenses (summary)
 
@@ -79,8 +80,7 @@ flutter pub get
 flutter run            # use a device or emulator
 ```
 
-Requirements: Flutter 3.47+ (Dart 3.13+), Android SDK (for Android builds)
-or Xcode (for iOS builds).
+Requirements: Flutter 3.47+ (Dart 3.13+) and the Android SDK.
 
 ### Tests & analysis
 

@@ -3,6 +3,12 @@
 All notable changes to Quriva are documented in this file.
 Format: Keep a Changelog-ish, versioned per SemVer.
 
+## [Unreleased]
+
+### Changed
+- Android-first: removed iOS targets and references from the repository and
+  documentation. iOS may return later via App Store/TestFlight.
+
 ## [0.1.0] — 2026-11-10
 
 Foundation release: client-only Quran.com-powered reader.
