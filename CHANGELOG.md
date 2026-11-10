@@ -8,6 +8,13 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.2.2] — 2026-11-10
+
+### Fixed
+- Added required `audio_service` foreground service and media button receiver
+  declarations to AndroidManifest for `just_audio_background`, fixing app
+  startup getting stuck on loading.
+
 ## [0.2.1] — 2026-11-10
 
 ### Changed
