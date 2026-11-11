@@ -146,6 +146,32 @@ fun ReaderScreen(
                 },
             )
         },
+        bottomBar = {
+            val canPlay = !state.timeline?.audioUrl.isNullOrBlank()
+            if (canPlay) {
+                androidx.compose.material3.Surface(tonalElevation = 2.dp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            if (thisPlaying && isPlaying) "Playing" else if (thisPlaying) "Paused" else "Ready to play",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Button(onClick = { if (thisPlaying) PlaybackController.toggle() else playThis() }) {
+                            Icon(
+                                if (thisPlaying && isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = null,
+                            )
+                            Text(if (thisPlaying && isPlaying) " Pause" else " Play")
+                        }
+                    }
+                }
+            }
+        },
     ) { padding ->
         when {
             state.loading -> Box(

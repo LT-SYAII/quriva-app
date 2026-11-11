@@ -26,6 +26,7 @@ data class ReaderUiState(
     val verses: List<ReaderVerse> = emptyList(),
     val timeline: ChapterAudioTimeline? = null,
     val bookmarkedVerses: Set<Int> = emptySet(),
+    val resumeVerse: Int? = null,
 )
 
 class ReaderViewModel(
@@ -66,11 +67,14 @@ class ReaderViewModel(
                 val chapter = chaptersDeferred.await().firstOrNull { it.id == chapterId }
                 val verses = versesDeferred.await()
                 val timeline = timelineDeferred.await()
+                val progress = runCatching { repository.getReadingProgress() }.getOrNull()
+                val resume = if (progress?.surahId == chapterId && progress.verseId > 1) progress.verseId else null
                 _uiState.value = _uiState.value.copy(
                     loading = false,
                     chapter = chapter,
                     verses = verses,
                     timeline = timeline,
+                    resumeVerse = resume,
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
