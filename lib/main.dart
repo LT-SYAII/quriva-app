@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:quriva/app/quriva_app.dart';
+import 'package:quriva/features/audio/audio_player.dart';
 import 'package:quriva/features/settings/presentation/preferences.dart';
 
 Future<void> main() async {
@@ -34,7 +35,8 @@ Future<void> main() async {
 
   // Background playback + media notification (lock screen / ongoing popup).
   // Best-effort: if init fails the app must still launch; playback will just
-  // run without a system notification.
+  // run without a system notification/media-session tags.
+  var audioBackgroundReady = false;
   try {
     await JustAudioBackground.init(
       androidNotificationChannelId: 'app.quriva.audio',
@@ -44,15 +46,13 @@ Future<void> main() async {
       androidStopForegroundOnPause: true,
       androidNotificationClickStartsActivity: true,
     );
+    audioBackgroundReady = true;
   } catch (_) {
     // Ignore: keep the app usable without background-audio integration.
   }
+  globalAudioPlayer.setBackgroundReady(audioBackgroundReady);
 
-  runApp(
-    const ProviderScope(
-      child: _Boot(),
-    ),
-  );
+  runApp(const ProviderScope(child: _Boot()));
 }
 
 class _Boot extends ConsumerWidget {

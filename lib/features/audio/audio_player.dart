@@ -64,7 +64,8 @@ class ChapterAudioPlayer {
     _player.positionStream.listen(_updateActiveVerse);
   }
 
-  static const Duration _loadTimeout = Duration(seconds: 30);
+  static const Duration _loadTimeout = Duration(seconds: 20);
+  static const Duration _startTimeout = Duration(seconds: 25);
 
   final AudioPlayer _player;
   String? _loadedId;
@@ -76,7 +77,13 @@ class ChapterAudioPlayer {
   List<VerseTimestamp> _timeline = const [];
   _PlayRequest? _lastRequest;
   int _loadToken = 0;
+  int _startToken = 0;
   bool _starting = false;
+  bool _backgroundReady = false;
+  Timer? _startWatchdog;
+
+  /// Must be called once after attempting [JustAudioBackground.init].
+  void setBackgroundReady(bool ready) => _backgroundReady = ready;
 
   /// Currently recited ayah, kept in sync with playback position.
   final ValueNotifier<VerseTimestamp?> activeVerse = ValueNotifier(null);
@@ -143,22 +150,52 @@ class ChapterAudioPlayer {
 
   void _onPlayerState(PlayerState state) {
     if (state.processingState == ProcessingState.completed) {
+      _cancelStartWatchdog();
       status.value = PlaybackStatus.paused;
       if (!_advancing) unawaited(_autoAdvance());
       return;
     }
-    if (_starting) return;
     if (state.playing) {
+      _starting = false;
+      _cancelStartWatchdog();
       status.value = PlaybackStatus.playing;
-    } else if (_loadedId != null && status.value != PlaybackStatus.error) {
+      return;
+    }
+    if (_starting) return;
+    if (status.value == PlaybackStatus.error) return;
+    if (state.processingState == ProcessingState.loading ||
+        state.processingState == ProcessingState.buffering) {
+      if (_loadedId != null) status.value = PlaybackStatus.loading;
+      return;
+    }
+    if (_loadedId != null) {
       status.value = PlaybackStatus.paused;
     }
   }
 
   void _setError(Object exception) {
+    _startToken++;
+    _cancelStartWatchdog();
     error.value = _friendlyError(exception);
     status.value = PlaybackStatus.error;
     _starting = false;
+  }
+
+  void _cancelStartWatchdog() {
+    _startWatchdog?.cancel();
+    _startWatchdog = null;
+  }
+
+  void _armStartWatchdog(int token) {
+    _cancelStartWatchdog();
+    _startWatchdog = Timer(_startTimeout, () {
+      if (token != _startToken || token != _loadToken) return;
+      if (_player.playing) return;
+      if (_player.processingState == ProcessingState.completed) return;
+      _setError(
+        Exception('Playback start timed out while buffering the recitation.'),
+      );
+    });
   }
 
   String _friendlyError(Object exception) {
@@ -256,31 +293,39 @@ class ChapterAudioPlayer {
     // track must not retry the failed primary URL all over again.
     final needsReload = !same || (_loadedId != url && _loadedId != fallbackUrl);
     if (!needsReload) {
+      final token = ++_loadToken;
+      final startToken = ++_startToken;
       _starting = true;
       error.value = null;
       status.value = PlaybackStatus.playing;
+      _armStartWatchdog(startToken);
       try {
         if (_player.processingState == ProcessingState.completed) {
           await _player.seek(Duration.zero);
         }
+        if (token != _loadToken) {
+          _cancelStartWatchdog();
+          return false;
+        }
         unawaited(
           _player.play().catchError((Object exception, StackTrace stack) {
-            _setError(exception);
+            if (token == _loadToken) _setError(exception);
           }),
         );
-        _starting = false;
         return true;
       } catch (exception) {
-        _setError(exception);
+        if (token == _loadToken) _setError(exception);
         return false;
       }
     }
 
     final token = ++_loadToken;
+    final startToken = ++_startToken;
     _starting = true;
     error.value = null;
     status.value = PlaybackStatus.loading;
     activeVerse.value = null;
+    _armStartWatchdog(startToken);
 
     final loaded = await _loadSource(
       url,
@@ -288,7 +333,10 @@ class ChapterAudioPlayer {
       fallbackUrl: fallbackUrl,
       token: token,
     );
-    if (token != _loadToken) return false;
+    if (token != _loadToken) {
+      _cancelStartWatchdog();
+      return false;
+    }
     if (!loaded) return false;
 
     _starting = false;
@@ -296,12 +344,12 @@ class ChapterAudioPlayer {
     try {
       unawaited(
         _player.play().catchError((Object exception, StackTrace stack) {
-          _setError(exception);
+          if (token == _loadToken) _setError(exception);
         }),
       );
       return true;
     } catch (exception) {
-      _setError(exception);
+      if (token == _loadToken) _setError(exception);
       return false;
     }
   }
@@ -313,9 +361,11 @@ class ChapterAudioPlayer {
     String? fallbackUrl,
   }) async {
     Future<void> load(String candidate) async {
-      await _player
-          .setAudioSource(AudioSource.uri(Uri.parse(candidate), tag: item))
-          .timeout(_loadTimeout);
+      final uri = Uri.parse(candidate);
+      final source = _backgroundReady
+          ? AudioSource.uri(uri, tag: item)
+          : AudioSource.uri(uri);
+      await _player.setAudioSource(source, preload: true).timeout(_loadTimeout);
     }
 
     try {
@@ -365,6 +415,9 @@ class ChapterAudioPlayer {
       playSurah(url: url, item: item);
 
   Future<void> pause() async {
+    _startToken++;
+    _cancelStartWatchdog();
+    _starting = false;
     await _player.pause();
     status.value = PlaybackStatus.paused;
   }

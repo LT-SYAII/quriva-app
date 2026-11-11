@@ -8,6 +8,15 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.4.1] — 2026-11-11
+
+### Fixed
+- Fixed recitation playback getting stuck on "loading" on some devices by
+  falling back to plain audio sources when background/media-session init is
+  unavailable, and by adding a start/buffer watchdog with clear error + retry.
+- Improved playback state handling during buffering and resume to avoid
+  indefinite spinners.
+
 ## [0.4.0] — 2026-11-11
 
 ### Added
