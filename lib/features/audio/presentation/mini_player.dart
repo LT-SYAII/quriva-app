@@ -44,7 +44,7 @@ class MiniPlayerBar extends StatelessWidget {
                 ),
                 child: GlassPanel(
                   radius: 22,
-                  blur: 24,
+                  blur: 10,
                   padding: EdgeInsets.zero,
                   onTap: () => context.push('/now-playing'),
                   child: Column(

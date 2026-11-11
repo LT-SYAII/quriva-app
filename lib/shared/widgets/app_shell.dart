@@ -31,7 +31,7 @@ class AppShell extends StatelessWidget {
               child: GlassPanel(
                 radius: 26,
                 padding: EdgeInsets.zero,
-                blur: 30,
+                blur: 10,
                 child: NavigationBar(
                   selectedIndex: selectedIndex,
                   onDestinationSelected: (index) {

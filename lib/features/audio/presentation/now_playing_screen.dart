@@ -567,7 +567,7 @@ class _LyricsCard extends StatelessWidget {
             : (active.verseNumber / total).clamp(0.0, 1.0);
         return GlassPanel(
           radius: 24,
-          blur: 20,
+          blur: 10,
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
           child: Column(
             children: [

@@ -456,7 +456,7 @@ class _ReaderTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
       child: GlassPanel(
         radius: 24,
-        blur: 26,
+        blur: 10,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
         child: Row(
           children: [
@@ -757,7 +757,7 @@ class _NowPlayingBar extends StatelessWidget {
         final artist = item?.artist ?? '';
         return GlassPanel(
           radius: 24,
-          blur: 24,
+          blur: 10,
           padding: EdgeInsets.zero,
           onTap: () => context.push('/now-playing'),
           child: Column(
@@ -965,18 +965,12 @@ class _VerseCard extends StatelessWidget {
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: scheme.onSurface.withValues(alpha: .10),
-                  blurRadius: 32,
-                  spreadRadius: 2,
+                  color: scheme.onSurface.withValues(alpha: .08),
+                  blurRadius: 14,
+                  spreadRadius: 1,
                 ),
               ]
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? .18 : .05),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+            : const [],
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
