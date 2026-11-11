@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -49,7 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import app.quriva.nativeapp.data.model.ReaderVerse
+import app.quriva.nativeapp.QurivaApplication
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -57,10 +60,13 @@ import kotlinx.coroutines.isActive
 @Composable
 fun ReaderScreen(
     onBack: () -> Unit,
-    viewModel: ReaderViewModel = viewModel(),
 ) {
-    val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val app = context.applicationContext as QurivaApplication
+    val viewModel: ReaderViewModel = viewModel(
+        factory = ReaderViewModel.factory(app.container.repository),
+    )
+    val state by viewModel.uiState.collectAsState()
 
     val audioUrl = state.timeline?.audioUrl
     val timestamps = state.timeline?.timestamps.orEmpty()
@@ -100,10 +106,17 @@ fun ReaderScreen(
     val listState = rememberLazyListState()
     LaunchedEffect(activeVerse, state.verses) {
         if (activeVerse > 0) {
+            viewModel.saveProgress(activeVerse)
             val index = state.verses.indexOfFirst { it.number == activeVerse }
             if (index >= 0) {
                 listState.animateScrollToItem((index + 1).coerceAtLeast(0))
             }
+        }
+    }
+
+    LaunchedEffect(state.verses) {
+        if (state.verses.isNotEmpty()) {
+            viewModel.saveProgress(state.verses.first().number)
         }
     }
 
@@ -199,6 +212,8 @@ fun ReaderScreen(
                     VerseCard(
                         verse = verse,
                         active = verse.number == activeVerse && activeVerse > 0,
+                        bookmarked = state.bookmarkedVerses.contains(verse.number),
+                        onToggleBookmark = { viewModel.toggleBookmark(verse.number) },
                     )
                 }
             }
@@ -239,7 +254,12 @@ private fun ReaderHeader(arabicName: String, meta: String) {
 }
 
 @Composable
-private fun VerseCard(verse: ReaderVerse, active: Boolean) {
+private fun VerseCard(
+    verse: ReaderVerse,
+    active: Boolean,
+    bookmarked: Boolean,
+    onToggleBookmark: () -> Unit,
+) {
     val bg by animateColorAsState(
         if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
         else MaterialTheme.colorScheme.surface,
@@ -253,12 +273,24 @@ private fun VerseCard(verse: ReaderVerse, active: Boolean) {
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                verse.number.toString(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    verse.number.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onToggleBookmark) {
+                    Icon(
+                        if (bookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        contentDescription = if (bookmarked) "Remove bookmark" else "Bookmark",
+                    )
+                }
+            }
             Text(
                 verse.arabic,
                 style = MaterialTheme.typography.titleLarge,

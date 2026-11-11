@@ -45,15 +45,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import app.quriva.nativeapp.QurivaApplication
 import app.quriva.nativeapp.data.model.Chapter
 import app.quriva.nativeapp.ui.read.ChaptersUiState
 import app.quriva.nativeapp.ui.read.ReadViewModel
+import app.quriva.nativeapp.ui.library.LibraryScreen
 import app.quriva.nativeapp.ui.reader.ReaderScreen
 import app.quriva.nativeapp.ui.theme.QurivaNativeTheme
 
@@ -144,10 +147,9 @@ private fun HomeScreen(onOpenChapter: (Chapter) -> Unit) {
                 onOpenChapter = onOpenChapter,
             )
 
-            1 -> PlaceholderPane(
+            1 -> LibraryScreen(
                 modifier = Modifier.padding(padding),
-                title = "Library",
-                body = "Bookmarks and reading progress will be migrated to Room/DataStore.",
+                onOpen = { surahId -> onOpenChapter(Chapter(surahId, "Surah $surahId", "", "", 0, "")) },
             )
 
             else -> PlaceholderPane(
@@ -163,8 +165,9 @@ private fun HomeScreen(onOpenChapter: (Chapter) -> Unit) {
 private fun ReadScreen(
     modifier: Modifier = Modifier,
     onOpenChapter: (Chapter) -> Unit,
-    viewModel: ReadViewModel = viewModel(),
 ) {
+    val app = LocalContext.current.applicationContext as QurivaApplication
+    val viewModel: ReadViewModel = viewModel(factory = ReadViewModel.factory(app.container.repository))
     val state by viewModel.uiState.collectAsState()
     when (val s = state) {
         is ChaptersUiState.Loading -> Box(

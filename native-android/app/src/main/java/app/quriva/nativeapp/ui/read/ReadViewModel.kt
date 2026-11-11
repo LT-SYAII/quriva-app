@@ -1,6 +1,7 @@
 package app.quriva.nativeapp.ui.read
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import app.quriva.nativeapp.data.model.Chapter
 import app.quriva.nativeapp.data.repository.QuranRepository
@@ -16,7 +17,7 @@ sealed interface ChaptersUiState {
 }
 
 class ReadViewModel(
-    private val repository: QuranRepository = QuranRepository(),
+    private val repository: QuranRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ChaptersUiState>(ChaptersUiState.Loading)
@@ -32,10 +33,22 @@ class ReadViewModel(
             try {
                 _uiState.value = ChaptersUiState.Success(repository.getChapters(language))
             } catch (e: Exception) {
-                _uiState.value = ChaptersUiState.Error(
-                    e.message ?: "Could not load chapters. Check your connection.",
-                )
+                val cached = runCatching { repository.getCachedChapters(language) }.getOrDefault(emptyList())
+                _uiState.value = if (cached.isNotEmpty()) {
+                    ChaptersUiState.Success(cached)
+                } else {
+                    ChaptersUiState.Error(e.message ?: "Could not load chapters. Check your connection.")
+                }
             }
         }
+    }
+
+    companion object {
+        fun factory(repository: QuranRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    ReadViewModel(repository) as T
+            }
     }
 }
