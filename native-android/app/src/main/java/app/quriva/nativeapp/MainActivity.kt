@@ -1,9 +1,10 @@
-package app.quriva.nativeapp
+package app.qurora.nativeapp
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,9 +46,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import app.quriva.nativeapp.data.model.Chapter
 import app.quriva.nativeapp.ui.read.ChaptersUiState
 import app.quriva.nativeapp.ui.read.ReadViewModel
+import app.quriva.nativeapp.ui.reader.ReaderScreen
 import app.quriva.nativeapp.ui.theme.QurivaNativeTheme
 
 class MainActivity : ComponentActivity() {
@@ -67,6 +74,31 @@ private data class Tab(val label: String, val icon: androidx.compose.ui.graphics
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QurivaNativeApp() {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = "home") {
+        composable("home") {
+            HomeScreen(
+                onOpenChapter = { chapter ->
+                    navController.navigate("reader/${chapter.id}/${chapter.nameSimple}")
+                },
+            )
+        }
+        composable(
+            route = "reader/{chapterId}/{chapterName}",
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.IntType },
+                navArgument("chapterName") { type = NavType.StringType },
+            ),
+        ) {
+            ReaderScreen(onBack = { navController.popBackStack() })
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeScreen(onOpenChapter: (Chapter) -> Unit) {
     val tabs = listOf(
         Tab("Read", Icons.AutoMirrored.Outlined.MenuBook),
         Tab("Library", Icons.Outlined.BookmarkBorder),
@@ -107,12 +139,17 @@ fun QurivaNativeApp() {
         },
     ) { padding ->
         when (selected) {
-            0 -> ReadScreen(Modifier.padding(padding))
+            0 -> ReadScreen(
+                modifier = Modifier.padding(padding),
+                onOpenChapter = onOpenChapter,
+            )
+
             1 -> PlaceholderPane(
                 modifier = Modifier.padding(padding),
                 title = "Library",
                 body = "Bookmarks and reading progress will be migrated to Room/DataStore.",
             )
+
             else -> PlaceholderPane(
                 modifier = Modifier.padding(padding),
                 title = "Settings",
@@ -125,6 +162,7 @@ fun QurivaNativeApp() {
 @Composable
 private fun ReadScreen(
     modifier: Modifier = Modifier,
+    onOpenChapter: (Chapter) -> Unit,
     viewModel: ReadViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -165,6 +203,7 @@ private fun ReadScreen(
         is ChaptersUiState.Success -> SurahList(
             modifier = modifier,
             chapters = s.chapters,
+            onOpenChapter = onOpenChapter,
             onRefresh = { viewModel.load() },
         )
     }
@@ -174,6 +213,7 @@ private fun ReadScreen(
 private fun SurahList(
     modifier: Modifier = Modifier,
     chapters: List<Chapter>,
+    onOpenChapter: (Chapter) -> Unit,
     onRefresh: () -> Unit,
 ) {
     LazyColumn(
@@ -197,8 +237,7 @@ private fun SurahList(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        "Loaded ${chapters.size} surahs from Quran.com using Kotlin networking. " +
-                            "Reader, audio (Media3), cache, and remaining screens will be migrated in phases to keep functionality intact.",
+                        "Loaded ${chapters.size} surahs from Quran.com. Open a surah for reader, translation, and synced audio highlight (Media3). Remaining parity work: cache/DB, bookmarks, settings, full background audio service.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -206,7 +245,11 @@ private fun SurahList(
             }
         }
         items(chapters, key = { it.id }) { chapter ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenChapter(chapter) },
+            ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,

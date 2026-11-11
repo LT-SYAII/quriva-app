@@ -17,12 +17,14 @@ This directory is the **native Kotlin rewrite** of Quriva, created to replace th
 - **Build:** R8 full mode/shrinkResources, ABI splits/AAB for minimal download size
 
 ## Migration phases
-1. **Foundation:** Gradle/Kotlin/Compose project, app shell, theme, navigation skeleton. ✅
-2. **Data layer (in progress):** Quran.com API models/client and repository ported; **surah list loads live from API** in the native app. Next: Room cache, DataStore preferences. 🔄
-3. **Core reading:** Surah list UI base done; next reader (Arabic + translation), search, bookmarks, reading progress.
-4. **Audio:** Media3 player service, chapter recitations, timeline/ayah highlight sync, mini + now-playing UI.
+1. **Foundation:** Gradle/Kotlin/Compose project, app shell, theme, Compose Navigation. ✅
+2. **Data layer (in progress):** Quran.com API client/models/repository for chapters, uthmani verses, translations, and chapter recitation timelines. Next: Room cache, DataStore preferences. 🔄
+3. **Core reading (in progress):** Surah list (live) → **Reader screen** (Arabic + translation, chapter metadata) implemented. Next: search, bookmarks, reading progress. 🔄
+4. **Audio (in progress):** **Media3 ExoPlayer** playback in reader with **ayah timeline highlighting/auto-scroll**. Next: full background MediaSessionService + notification, mini/now-playing UI, reciter/catalog selection. 🔄
 5. **Polish & parity:** chapter info, reciter/translation selection, offline/cache behavior, error/empty states.
 6. **Release hardening:** baseline profiles, R8/resource shrinking, ABI splits/AAB, signing/CI, remove/replace Flutter app once parity is verified.
+
+> Status: substantial Kotlin-native progress landed (list + reader + synced audio). Full feature parity and release swap remain a multi-step effort; the Flutter app stays functional throughout.
 
 ## Build (when Android SDK/toolchain is available)
 ```bash
