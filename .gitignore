@@ -45,3 +45,9 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Native Android signing
+native-android/key.properties
+native-android/app/upload-keystore.jks
+native-android/**/*.jks
+native-android/local.properties

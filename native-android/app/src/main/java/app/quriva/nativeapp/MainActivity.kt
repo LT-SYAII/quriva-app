@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -104,6 +108,14 @@ fun QurivaNativeApp() {
         navController.navigate("reader/$id/$encoded")
     }
 
+    val bg = Brush.verticalGradient(
+        listOf(
+            MaterialTheme.colorScheme.background,
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+            MaterialTheme.colorScheme.background,
+        )
+    )
+    Box(modifier = Modifier.fillMaxSize().background(bg)) {
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             HomeScreen(
@@ -149,6 +161,7 @@ fun QurivaNativeApp() {
         composable("nowplaying") {
             NowPlayingScreen(onBack = { navController.popBackStack() })
         }
+    }
     }
 }
 
