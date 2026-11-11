@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -43,10 +44,17 @@ class PlaybackService : MediaSessionService() {
                     PlaybackState.updatePlaying(isPlaying)
                 }
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) {
+                        PlaybackState.updateError(null)
+                    }
                     if (playbackState == Player.STATE_ENDED) {
                         val cid = PlaybackState.nowPlaying.value?.chapterId
                         if (cid != null && cid > 0) PlaybackState.notifyEnded(cid)
                     }
+                }
+                override fun onPlayerError(error: PlaybackException) {
+                    PlaybackState.updateError(error.message ?: "Audio playback failed.")
+                    PlaybackState.updatePlaying(false)
                 }
             })
         }
@@ -84,21 +92,25 @@ class PlaybackService : MediaSessionService() {
                     currentUrl = null
                     PlaybackState.updateDuration(0L)
                     PlaybackState.updatePosition(0L)
-                } else if (np.audioUrl.isNotBlank() && np.audioUrl != currentUrl) {
-                    currentUrl = np.audioUrl
-                    val meta = MediaMetadata.Builder()
-                        .setTitle(np.chapterName)
-                        .setArtist("Quriva")
-                        .build()
-                    val item = MediaItem.Builder()
-                        .setUri(np.audioUrl)
-                        .setMediaId("${np.chapterId}-${np.reciterId}")
-                        .setMediaMetadata(meta)
-                        .build()
-                    exo.setMediaItem(item)
-                    exo.prepare()
-                    exo.playWhenReady = true
-                    startProgress(exo)
+                } else if (np.audioUrl.isNotBlank()) {
+                    val forceReload = PlaybackState.error.value != null && np.audioUrl == currentUrl
+                    if (np.audioUrl != currentUrl || forceReload) {
+                        currentUrl = np.audioUrl
+                        PlaybackState.updateError(null)
+                        val meta = MediaMetadata.Builder()
+                            .setTitle(np.chapterName)
+                            .setArtist("Quriva")
+                            .build()
+                        val item = MediaItem.Builder()
+                            .setUri(np.audioUrl)
+                            .setMediaId("${np.chapterId}-${np.reciterId}")
+                            .setMediaMetadata(meta)
+                            .build()
+                        exo.setMediaItem(item)
+                        exo.prepare()
+                        exo.playWhenReady = true
+                        startProgress(exo)
+                    }
                 }
             }
         }

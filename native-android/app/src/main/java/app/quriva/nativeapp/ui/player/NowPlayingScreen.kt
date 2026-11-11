@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Stop
@@ -21,6 +22,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -57,6 +59,7 @@ fun NowPlayingScreen(onBack: () -> Unit) {
     val activeVerse by PlaybackState.activeVerse.collectAsState()
     val position by PlaybackState.positionMs.collectAsState()
     val duration by PlaybackState.durationMs.collectAsState()
+    val error by PlaybackState.error.collectAsState()
     var scrubbing by remember { mutableStateOf(false) }
     var scrubPos by remember { mutableFloatStateOf(0f) }
 
@@ -103,6 +106,7 @@ fun NowPlayingScreen(onBack: () -> Unit) {
                         Text(now!!.chapterName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
                         Text("Reciter ${now!!.reciterId} · Surah ${now!!.chapterId}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (activeVerse > 0) Text("Highlight: ayah $activeVerse", color = MaterialTheme.colorScheme.primary)
+                        if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
                     }
                 }
                 if (duration > 0) {
@@ -133,6 +137,12 @@ fun NowPlayingScreen(onBack: () -> Unit) {
                     }
                     IconButton(onClick = { val next = (now!!.chapterId + 1).coerceAtMost(114); if (next != now!!.chapterId) playChapter(next) }) {
                         Icon(Icons.Filled.SkipNext, contentDescription = "Next")
+                    }
+                }
+                if (error != null) {
+                    OutlinedButton(onClick = { PlaybackController.retry(context) }) {
+                        Icon(Icons.Filled.Refresh, contentDescription = null)
+                        Text(" Retry audio")
                     }
                 }
                 Button(onClick = { PlaybackController.stop(); onBack() }) {

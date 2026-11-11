@@ -43,3 +43,13 @@ object PlaybackController {
         PlaybackState.updateNowPlaying(null)
     }
 }
+
+
+    fun retry(context: Context) {
+        val np = PlaybackState.nowPlaying.value ?: return
+        PlaybackState.updateError(null)
+        // trigger reload by clearing current tracking in service via re-emitting same nowPlaying
+        PlaybackState.updateNowPlaying(null)
+        PlaybackState.updateNowPlaying(np)
+        ensure(context)
+    }
