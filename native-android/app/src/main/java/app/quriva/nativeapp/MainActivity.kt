@@ -55,7 +55,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.quriva.nativeapp.data.model.Chapter
+import app.quriva.nativeapp.ui.info.ChapterInfoScreen
 import app.quriva.nativeapp.ui.library.LibraryScreen
+import app.quriva.nativeapp.ui.player.MiniPlayerBar
+import app.quriva.nativeapp.ui.player.NowPlayingScreen
 import app.quriva.nativeapp.ui.read.ChaptersUiState
 import app.quriva.nativeapp.ui.read.ReadViewModel
 import app.quriva.nativeapp.ui.reader.ReaderScreen
@@ -95,6 +98,7 @@ fun QurivaNativeApp() {
                 onOpenChapter = { chapter -> openReader(chapter.id, chapter.nameSimple) },
                 onSearch = { navController.navigate("search") },
                 onSettings = { navController.navigate("settings") },
+                onOpenNowPlaying = { navController.navigate("nowplaying") },
             )
         }
         composable(
@@ -104,7 +108,22 @@ fun QurivaNativeApp() {
                 navArgument("chapterName") { type = NavType.StringType },
             ),
         ) {
-            ReaderScreen(onBack = { navController.popBackStack() })
+            ReaderScreen(
+                onBack = { navController.popBackStack() },
+                onInfo = { id, name ->
+                    val encoded = java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8.toString())
+                    navController.navigate("info/$id/$encoded")
+                },
+            )
+        }
+        composable(
+            route = "info/{chapterId}/{chapterName}",
+            arguments = listOf(
+                navArgument("chapterId") { type = NavType.IntType },
+                navArgument("chapterName") { type = NavType.StringType },
+            ),
+        ) {
+            ChapterInfoScreen(onBack = { navController.popBackStack() })
         }
         composable("search") {
             SearchScreen(
@@ -115,6 +134,9 @@ fun QurivaNativeApp() {
         composable("settings") {
             SettingsScreen(onBack = { navController.popBackStack() })
         }
+        composable("nowplaying") {
+            NowPlayingScreen(onBack = { navController.popBackStack() })
+        }
     }
 }
 
@@ -124,6 +146,7 @@ private fun HomeScreen(
     onOpenChapter: (Chapter) -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
+    onOpenNowPlaying: () -> Unit,
 ) {
     val tabs = listOf(
         Tab("Read", Icons.AutoMirrored.Outlined.MenuBook),
@@ -138,7 +161,7 @@ private fun HomeScreen(
                 title = {
                     Column {
                         Text("Quriva", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("Native Kotlin (lighter, in progress)", style = MaterialTheme.typography.labelSmall,
+                        Text("Native Kotlin", style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
@@ -149,14 +172,17 @@ private fun HomeScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { index, tab ->
-                    NavigationBarItem(
-                        selected = selected == index,
-                        onClick = { selected = index },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) },
-                    )
+            Column {
+                MiniPlayerBar(onOpen = onOpenNowPlaying)
+                NavigationBar {
+                    tabs.forEachIndexed { index, tab ->
+                        NavigationBarItem(
+                            selected = selected == index,
+                            onClick = { selected = index },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) },
+                        )
+                    }
                 }
             }
         },

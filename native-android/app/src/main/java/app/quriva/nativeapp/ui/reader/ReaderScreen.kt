@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,14 +35,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -49,17 +46,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import app.quriva.nativeapp.QurivaApplication
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import app.quriva.nativeapp.audio.NowPlaying
+import app.quriva.nativeapp.audio.PlaybackController
+import app.quriva.nativeapp.audio.PlaybackState
+import app.quriva.nativeapp.data.model.ReaderVerse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     onBack: () -> Unit,
+    onInfo: (Int, String) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as QurivaApplication
@@ -68,49 +65,33 @@ fun ReaderScreen(
     )
     val state by viewModel.uiState.collectAsState()
 
-    val audioUrl = state.timeline?.audioUrl
-    val timestamps = state.timeline?.timestamps.orEmpty()
+    val now by PlaybackState.nowPlaying.collectAsState()
+    val isPlaying by PlaybackState.isPlaying.collectAsState()
+    val activeVerse by PlaybackState.activeVerse.collectAsState()
+    val thisPlaying = now?.chapterId == viewModel.chapterId
 
-    val player = remember(audioUrl) {
-        if (audioUrl.isNullOrBlank()) null else ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(audioUrl))
-            prepare()
-        }
-    }
-    var isPlaying by remember(player) { mutableStateOf(false) }
-    var activeVerse by remember(player) { mutableIntStateOf(-1) }
-
-    DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) {
-                isPlaying = playing
-            }
-        }
-        player?.addListener(listener)
-        onDispose {
-            player?.removeListener(listener)
-            player?.release()
-        }
-    }
-
-    LaunchedEffect(player, timestamps) {
-        if (player == null || timestamps.isEmpty()) return@LaunchedEffect
-        while (isActive) {
-            val pos = player.currentPosition.toInt()
-            val match = timestamps.firstOrNull { pos >= it.fromMs && pos <= it.toMs }
-            activeVerse = match?.verseNumber ?: -1
-            delay(250)
-        }
+    fun playThis() {
+        val tl = state.timeline ?: return
+        val url = tl.audioUrl ?: return
+        PlaybackController.ensure(context)
+        PlaybackController.play(
+            context,
+            NowPlaying(
+                chapterId = viewModel.chapterId,
+                chapterName = state.chapter?.nameSimple ?: viewModel.chapterName,
+                audioUrl = url,
+                reciterId = tl.reciterId,
+                timestamps = tl.timestamps,
+            ),
+        )
     }
 
     val listState = rememberLazyListState()
-    LaunchedEffect(activeVerse, state.verses) {
-        if (activeVerse > 0) {
+    LaunchedEffect(activeVerse, state.verses, thisPlaying) {
+        if (thisPlaying && activeVerse > 0) {
             viewModel.saveProgress(activeVerse)
             val index = state.verses.indexOfFirst { it.number == activeVerse }
-            if (index >= 0) {
-                listState.animateScrollToItem((index + 1).coerceAtLeast(0))
-            }
+            if (index >= 0) listState.animateScrollToItem((index + 1).coerceAtLeast(0))
         }
     }
 
@@ -145,13 +126,19 @@ fun ReaderScreen(
                     }
                 },
                 actions = {
-                    if (player != null) {
+                    IconButton(onClick = {
+                        onInfo(viewModel.chapterId, state.chapter?.nameSimple ?: viewModel.chapterName)
+                    }) {
+                        Icon(Icons.Outlined.Info, contentDescription = "Info")
+                    }
+                    val canPlay = !state.timeline?.audioUrl.isNullOrBlank()
+                    if (canPlay) {
                         IconButton(onClick = {
-                            if (player.isPlaying) player.pause() else player.play()
+                            if (thisPlaying) PlaybackController.toggle() else playThis()
                         }) {
                             Icon(
-                                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                if (thisPlaying && isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (thisPlaying && isPlaying) "Pause" else "Play",
                             )
                         }
                     }
@@ -203,15 +190,15 @@ fun ReaderScreen(
                                 append(c.versesCount)
                                 append(" ayat")
                             }
-                            if (player != null) append(" · Audio ready")
-                            if (timestamps.isNotEmpty()) append(" · Highlight synced")
+                            if (!state.timeline?.audioUrl.isNullOrBlank()) append(" · Audio ready")
+                            if (state.timeline?.timestamps?.isNotEmpty() == true) append(" · Highlight synced")
                         },
                     )
                 }
                 itemsIndexed(state.verses, key = { _, v -> v.key }) { _, verse ->
                     VerseCard(
                         verse = verse,
-                        active = verse.number == activeVerse && activeVerse > 0,
+                        active = thisPlaying && verse.number == activeVerse && activeVerse > 0,
                         bookmarked = state.bookmarkedVerses.contains(verse.number),
                         onToggleBookmark = { viewModel.toggleBookmark(verse.number) },
                     )
