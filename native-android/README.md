@@ -7,32 +7,36 @@ This directory is the **native Kotlin rewrite** of Quriva, created to replace th
 - Smaller APK/AAB and lower memory overhead vs Flutter build
 - Feature parity with the current Quriva app (Quran reader, Quran.com API, recitation audio + background playback, ayah highlighting/timestamps, bookmarks/progress, settings, caching)
 
-## Tech stack (planned)
+## Tech stack
 - **UI:** Jetpack Compose, Material 3
-- **DI:** Hilt
-- **Networking:** Retrofit/OkHttp + Kotlinx Serialization (or Moshi)
+- **Networking:** Retrofit/OkHttp + Kotlinx Serialization
 - **Database/cache:** Room + DataStore
 - **Audio:** Media3 ExoPlayer + MediaSessionService (background/notification)
-- **Images:** none required (procedural/monochrome UI), or Coil if added
-- **Build:** R8 full mode/shrinkResources, ABI splits/AAB for minimal download size
+- **Build:** R8/resource shrinking, ABI splits, (AAB recommended for delivery)
 
-## Migration phases
-1. **Foundation:** Gradle/Kotlin/Compose project, app shell, theme, Compose Navigation. ✅
-2. **Data layer (in progress):** Quran.com API client/models/repository (chapters, verses, translations, timelines, reciters, translation resources, search, chapter info) with **Room cache** (chapters/verses) and **DataStore preferences**. 🔄
-3. **Core reading (in progress):** Surah list (live/cached) → **Reader** (Arabic + translation, metadata, bookmark toggle, progress save), **Library** (bookmarks + continue-reading), and **Search** implemented. Next: chapter info screen, richer search UX. 🔄
-4. **Audio (in progress):** **Media3 ExoPlayer + MediaSessionService** for background playback/notification with shared controller/state, **ayah timeline highlighting/auto-scroll**, mini-player and now-playing screens, reciter/translation selection wired to playback prefs. Next: auto-next, lockscreen/notification polish, richer transport UX. 🔄
-5. **Polish & parity:** **Settings** (reciter/translation selection), **Search**, and **Chapter Info** screens added. Remaining: app language/theme controls, deeper offline/error/empty behavior parity, full UI polish.
-6. **Release hardening:** R8/resource shrinking configured; remaining: ABI splits/AAB, signing, native CI/release, and swap from Flutter once parity is verified.
+## Implemented (native)
+- Surah list (live Quran.com API with Room cache fallback)
+- Reader: Arabic + translation, chapter metadata, bookmark toggle, reading progress, ayah highlight/auto-scroll synced to recitation, tap-verse-to-seek
+- Audio: shared Media3 ExoPlayer via `MediaSessionService` (background/foreground-capable), mini-player, Now Playing (seek, play/pause/stop, prev/next), auto-next chapter, reader playback controls
+- Persistence: Room (chapters/verses cache, bookmarks, progress) + DataStore preferences (language, translation, reciter, theme)
+- Library: saved bookmarks and continue-reading
+- Search: verse/translation search
+- Chapter info screen
+- Settings: app language & theme (applied), reciter and translation selection (wired to playback/reader)
+- Release prep: minify/shrink resources, ABI splits, proguard rules, `native-release.yml` workflow (manual/tag `native-v*`)
 
-> Status: core read, synced background-capable audio, persistence, search, settings, info, library, and player UI are ported to Kotlin. Remaining for full parity: auto-next/advanced transport, complete settings/polish, and native release pipeline/swap. Flutter app remains functional.
+## Remaining for full parity & release swap
+- Build/verify on device with full Android SDK (compileSdk 35/platforms): confirm notification/lockscreen controls, audio edge cases, and end-to-end behavior
+- Fine-grained UI/UX parity with Flutter (glass/monochrome polish), and deeper offline/error/empty-state parity
+- Finalize native signing + release pipeline, publish native APK/AAB, then replace Flutter release artifact only after parity is confirmed (Flutter remains functional until then)
 
-## Build (when Android SDK/toolchain is available)
+## Build (with Android SDK/toolchain)
 ```bash
 cd native-android
-./gradlew :app:assembleRelease
+./gradlew :app:assembleRelease   # or :app:bundleRelease
 ```
 
 ## APK size notes
-- Use Android App Bundle (`:app:bundleRelease`) or per-ABI splits for smallest delivered size.
+- Prefer Android App Bundle (`:app:bundleRelease`) or per-ABI APKs for smallest delivered size.
 - Keep `isMinifyEnabled = true` and `isShrinkResources = true` in release.
-- Avoid bundling large fonts/media; Quriva uses system/procedural assets.
+- No Flutter engine bundled; assets kept minimal/procedural.
