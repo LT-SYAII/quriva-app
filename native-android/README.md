@@ -17,12 +17,12 @@ This directory is the **native Kotlin rewrite** of Quriva, created to replace th
 - **Build:** R8 full mode/shrinkResources, ABI splits/AAB for minimal download size
 
 ## Migration phases
-1. **Foundation (this scaffold):** Gradle/Kotlin/Compose project, app shell, theme, navigation skeleton.
-2. **Data layer:** Quran.com API models/client, repositories, Room cache, DataStore preferences.
-3. **Core reading:** Surah list, reader (Arabic + translation), search, bookmarks, reading progress.
+1. **Foundation:** Gradle/Kotlin/Compose project, app shell, theme, navigation skeleton. ✅
+2. **Data layer (in progress):** Quran.com API models/client and repository ported; **surah list loads live from API** in the native app. Next: Room cache, DataStore preferences. 🔄
+3. **Core reading:** Surah list UI base done; next reader (Arabic + translation), search, bookmarks, reading progress.
 4. **Audio:** Media3 player service, chapter recitations, timeline/ayah highlight sync, mini + now-playing UI.
 5. **Polish & parity:** chapter info, reciter/translation selection, offline/cache behavior, error/empty states.
-6. **Release hardening:** baseline profiles, R8/resource shrinking, ABI splits/AAB, signing/CI, remove Flutter app once parity is verified.
+6. **Release hardening:** baseline profiles, R8/resource shrinking, ABI splits/AAB, signing/CI, remove/replace Flutter app once parity is verified.
 
 ## Build (when Android SDK/toolchain is available)
 ```bash
