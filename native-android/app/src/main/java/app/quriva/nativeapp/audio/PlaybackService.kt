@@ -42,6 +42,12 @@ class PlaybackService : MediaSessionService() {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     PlaybackState.updatePlaying(isPlaying)
                 }
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_ENDED) {
+                        val cid = PlaybackState.nowPlaying.value?.chapterId
+                        if (cid != null && cid > 0) PlaybackState.notifyEnded(cid)
+                    }
+                }
             })
         }
         player = exo

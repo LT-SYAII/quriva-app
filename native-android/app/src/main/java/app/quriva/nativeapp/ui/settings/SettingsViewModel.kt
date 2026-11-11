@@ -52,6 +52,7 @@ class SettingsViewModel(
     fun setReciter(id: Int) { viewModelScope.launch { preferences.setReciterId(id) } }
     fun setTranslation(id: Int) { viewModelScope.launch { preferences.setTranslationId(id) } }
     fun setLanguage(lang: String) { viewModelScope.launch { preferences.setAppLanguage(lang) } }
+    fun setTheme(mode: String) { viewModelScope.launch { preferences.setThemeMode(mode) } }
 
     companion object {
         fun factory(

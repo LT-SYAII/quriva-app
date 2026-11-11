@@ -26,8 +26,13 @@ object PlaybackState {
     private val _activeVerse = MutableStateFlow(-1)
     val activeVerse: StateFlow<Int> = _activeVerse.asStateFlow()
 
+    private val _endedChapterId = MutableStateFlow<Int?>(null)
+    val endedChapterId: StateFlow<Int?> = _endedChapterId.asStateFlow()
+
     fun updateNowPlaying(np: NowPlaying?) { _nowPlaying.value = np }
     fun updatePlaying(playing: Boolean) { _isPlaying.value = playing }
     fun updatePosition(pos: Long) { _positionMs.value = pos }
     fun updateActiveVerse(v: Int) { _activeVerse.value = v }
+    fun notifyEnded(chapterId: Int) { _endedChapterId.value = chapterId }
+    fun consumeEnded() { _endedChapterId.value = null }
 }

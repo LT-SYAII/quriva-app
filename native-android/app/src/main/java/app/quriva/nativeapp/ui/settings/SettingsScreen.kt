@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -65,11 +66,41 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Preferences", fontWeight = FontWeight.SemiBold)
-                        Text("Language: ${prefs.appLanguage} · Translation: ${prefs.translationId} · Reciter: ${prefs.reciterId}",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Changes apply when you reopen a surah.", style = MaterialTheme.typography.bodySmall,
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("App", fontWeight = FontWeight.SemiBold)
+                        Text("Language", style = MaterialTheme.typography.labelLarge)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("en" to "English", "id" to "Indonesia").forEach { (code, label) ->
+                                FilterChip(
+                                    selected = prefs.appLanguage == code,
+                                    onClick = { vm.setLanguage(code) },
+                                    label = { Text(label) },
+                                )
+                            }
+                        }
+                        Text("Theme", style = MaterialTheme.typography.labelLarge)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("system", "light", "dark").forEach { mode ->
+                                FilterChip(
+                                    selected = prefs.themeMode == mode,
+                                    onClick = { vm.setTheme(mode) },
+                                    label = { Text(mode.replaceFirstChar { it.uppercase() }) },
+                                )
+                            }
+                        }
+                        Text(
+                            "Theme/language changes may apply on next screen open; playback uses current prefs.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Selected", fontWeight = FontWeight.SemiBold)
+                        Text("Translation: ${prefs.translationId} · Reciter: ${prefs.reciterId}",
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -87,7 +118,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
                 if (showReciters) {
-                    items(data.reciters.take(30)) { r ->
+                    items(data.reciters.take(40)) { r ->
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable { vm.setReciter(r.id) }.padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -112,7 +143,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     }
                 }
                 if (showTranslations) {
-                    items(data.translations.take(40)) { t ->
+                    items(data.translations.take(50)) { t ->
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable { vm.setTranslation(t.id) }.padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,

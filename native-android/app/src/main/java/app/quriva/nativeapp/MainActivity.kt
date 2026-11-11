@@ -37,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,9 +56,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.quriva.nativeapp.data.model.Chapter
+import app.quriva.nativeapp.data.preferences.UserPreferences
 import app.quriva.nativeapp.ui.info.ChapterInfoScreen
 import app.quriva.nativeapp.ui.library.LibraryScreen
 import app.quriva.nativeapp.ui.player.MiniPlayerBar
+import app.quriva.nativeapp.ui.player.AutoNextHandler
 import app.quriva.nativeapp.ui.player.NowPlayingScreen
 import app.quriva.nativeapp.ui.read.ChaptersUiState
 import app.quriva.nativeapp.ui.read.ReadViewModel
@@ -86,6 +89,7 @@ private data class Tab(val label: String, val icon: androidx.compose.ui.graphics
 @Composable
 fun QurivaNativeApp() {
     val navController = rememberNavController()
+    AutoNextHandler()
 
     fun openReader(id: Int, name: String) {
         val encoded = URLEncoder.encode(name, StandardCharsets.UTF_8.toString())
@@ -205,6 +209,8 @@ private fun ReadScreen(
 ) {
     val app = LocalContext.current.applicationContext as QurivaApplication
     val viewModel: ReadViewModel = viewModel(factory = ReadViewModel.factory(app.container.repository))
+    val prefs by app.container.preferences.flow.collectAsState(initial = UserPreferences())
+    androidx.compose.runtime.LaunchedEffect(prefs.appLanguage) { viewModel.load(prefs.appLanguage) }
     val state by viewModel.uiState.collectAsState()
     when (val s = state) {
         is ChaptersUiState.Loading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
