@@ -49,6 +49,69 @@ class _LandscapePainter extends CustomPainter {
   final bool isDark;
   final bool compact;
 
+  static const List<Offset> _starsFull = [
+    Offset(0.06, 0.04),
+    Offset(0.14, 0.12),
+    Offset(0.22, 0.07),
+    Offset(0.31, 0.18),
+    Offset(0.38, 0.05),
+    Offset(0.45, 0.14),
+    Offset(0.52, 0.09),
+    Offset(0.58, 0.20),
+    Offset(0.63, 0.03),
+    Offset(0.69, 0.16),
+    Offset(0.74, 0.08),
+    Offset(0.81, 0.13),
+    Offset(0.88, 0.06),
+    Offset(0.93, 0.19),
+    Offset(0.10, 0.28),
+    Offset(0.18, 0.34),
+    Offset(0.27, 0.24),
+    Offset(0.41, 0.31),
+    Offset(0.49, 0.26),
+    Offset(0.57, 0.36),
+    Offset(0.66, 0.28),
+    Offset(0.76, 0.33),
+    Offset(0.84, 0.25),
+    Offset(0.91, 0.30),
+  ];
+  static const List<Offset> _starsCompact = [
+    Offset(0.08, 0.06),
+    Offset(0.22, 0.14),
+    Offset(0.36, 0.08),
+    Offset(0.48, 0.18),
+    Offset(0.62, 0.10),
+    Offset(0.74, 0.16),
+    Offset(0.86, 0.07),
+    Offset(0.92, 0.22),
+  ];
+  static const List<double> _starSizes = [
+    0.45,
+    0.7,
+    0.35,
+    0.8,
+    0.5,
+    0.65,
+    0.4,
+    0.75,
+    0.55,
+    0.7,
+    0.38,
+    0.6,
+    0.5,
+    0.8,
+    0.42,
+    0.68,
+    0.36,
+    0.72,
+    0.48,
+    0.64,
+    0.4,
+    0.78,
+    0.52,
+    0.66,
+  ];
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
@@ -97,19 +160,20 @@ class _LandscapePainter extends CustomPainter {
       );
     }
 
-    // Stars (kept intentionally light) --------------------------------------
+    // Stars (kept intentionally light, precomputed positions) ---------------
     if (isDark) {
-      final count = compact ? 8 : 24;
-      final rnd = math.Random(11);
-      final maxY = h * (compact ? .40 : .46);
-      for (var i = 0; i < count; i++) {
+      final stars = compact ? _starsCompact : _starsFull;
+      final maxYFactor = compact ? .40 : .46;
+      final paint = Paint();
+      for (var i = 0; i < stars.length; i++) {
+        final p = stars[i];
+        final r = _starSizes[i % _starSizes.length];
+        final a = 0.22 + (r * 0.45);
+        paint.color = Colors.white.withValues(alpha: a.clamp(0.2, 0.55));
         canvas.drawCircle(
-          Offset(rnd.nextDouble() * w, rnd.nextDouble() * maxY),
-          rnd.nextDouble() * 0.8 + 0.3,
-          Paint()
-            ..color = Colors.white.withValues(
-              alpha: .20 + rnd.nextDouble() * .40,
-            ),
+          Offset(p.dx * w, (p.dy / 0.36) * h * maxYFactor),
+          r,
+          paint,
         );
       }
     }

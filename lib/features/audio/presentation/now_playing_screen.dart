@@ -464,13 +464,13 @@ class _ArtworkCard extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Container(
-            width: size * .86,
-            height: size * .86,
+            width: size * .78,
+            height: size * .78,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  scheme.onSurface.withValues(alpha: .18),
+                  scheme.onSurface.withValues(alpha: .10),
                   Colors.transparent,
                 ],
               ),
@@ -487,9 +487,9 @@ class _ArtworkCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: .42),
-                  blurRadius: 48,
-                  offset: const Offset(0, 22),
+                  color: Colors.black.withValues(alpha: .28),
+                  blurRadius: 20,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
@@ -567,7 +567,7 @@ class _LyricsCard extends StatelessWidget {
             : (active.verseNumber / total).clamp(0.0, 1.0);
         return GlassPanel(
           radius: 24,
-          blur: 10,
+          blur: 0,
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
           child: Column(
             children: [

@@ -114,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: 12),
                   GlassPanel(
                     radius: 20,
-                    blur: 8,
+                    blur: 0,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 4,

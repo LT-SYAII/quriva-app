@@ -69,6 +69,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     });
   }
 
+  DateTime? _lastProgressSave;
+  int? _lastSavedVerse;
+
   void _saveProgress() {
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return;
@@ -76,6 +79,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         .reduce((a, b) => a.itemLeadingEdge < b.itemLeadingEdge ? a : b)
         .index;
     if (first < 2) return;
+    final now = DateTime.now();
+    if (_lastSavedVerse == first &&
+        _lastProgressSave != null &&
+        now.difference(_lastProgressSave!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastSavedVerse = first;
+    _lastProgressSave = now;
     unawaited(ref.read(databaseProvider).saveProgress(widget.surahId, first));
   }
 
@@ -305,50 +316,54 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       globalAudioPlayer.active && !_hideBar && !buffering;
                   return Stack(
                     children: [
-                      ScrollablePositionedList.builder(
-                        itemCount: verses.length + 1,
-                        itemScrollController: _itemScrollController,
-                        itemPositionsListener: _itemPositionsListener,
-                        padding: EdgeInsets.fromLTRB(
-                          14,
-                          topInset + 84,
-                          14,
-                          showBar ? 132 + bottomInset : 32 + bottomInset,
-                        ),
-                        itemBuilder: (context, index) {
-                          if (index == 0) {
-                            return _SurahHero(
-                              chapter: chapter,
-                              surahTitle: surahTitle,
-                              reciterName: reciterName,
-                              playing: playing && activeThisSurah,
-                              buffering: buffering,
-                              audioAvailable:
-                                  audioUrl != null && audioUrl.isNotEmpty,
-                              audioLoading: audioLoading,
-                              audioUnavailable: audioUnavailable,
-                              timeline: timeline,
-                              onPlay: () => _toggleSurahAudio(
-                                url: audioUrl,
-                                fallbackUrl: fallbackUrl,
-                                surahTitle: surahTitle.split(' · ').first,
-                                reciterName: reciterName,
-                                recitationId: reciterId,
-                                timeline: timeline,
-                              ),
-                            );
-                          }
-                          final verse = verses[index - 1];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            child: ValueListenableBuilder<VerseTimestamp?>(
-                              valueListenable: globalAudioPlayer.activeVerse,
-                              builder: (context, active, _) {
-                                final isActive =
-                                    active != null &&
-                                    active.chapterId == widget.surahId &&
-                                    active.verseNumber == verse.number;
-                                return _VerseCard(
+                      ValueListenableBuilder<VerseTimestamp?>(
+                        valueListenable: globalAudioPlayer.activeVerse,
+                        builder: (context, active, _) {
+                          final activeNumber =
+                              (active != null &&
+                                  active.chapterId == widget.surahId)
+                              ? active.verseNumber
+                              : null;
+                          return ScrollablePositionedList.builder(
+                            itemCount: verses.length + 1,
+                            itemScrollController: _itemScrollController,
+                            itemPositionsListener: _itemPositionsListener,
+                            padding: EdgeInsets.fromLTRB(
+                              14,
+                              topInset + 84,
+                              14,
+                              showBar ? 132 + bottomInset : 32 + bottomInset,
+                            ),
+                            itemBuilder: (context, index) {
+                              if (index == 0) {
+                                return _SurahHero(
+                                  chapter: chapter,
+                                  surahTitle: surahTitle,
+                                  reciterName: reciterName,
+                                  playing: playing && activeThisSurah,
+                                  buffering: buffering,
+                                  audioAvailable:
+                                      audioUrl != null && audioUrl.isNotEmpty,
+                                  audioLoading: audioLoading,
+                                  audioUnavailable: audioUnavailable,
+                                  timeline: timeline,
+                                  onPlay: () => _toggleSurahAudio(
+                                    url: audioUrl,
+                                    fallbackUrl: fallbackUrl,
+                                    surahTitle: surahTitle.split(' · ').first,
+                                    reciterName: reciterName,
+                                    recitationId: reciterId,
+                                    timeline: timeline,
+                                  ),
+                                );
+                              }
+                              final verse = verses[index - 1];
+                              final isActive = activeNumber == verse.number;
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ),
+                                child: _VerseCard(
                                   verse: verse,
                                   totalVerses: verses.length,
                                   isBookmarked: bookmarked.contains(
@@ -375,9 +390,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                                     recitationId: reciterId,
                                     timeline: timeline,
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -456,7 +471,7 @@ class _ReaderTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
       child: GlassPanel(
         radius: 24,
-        blur: 10,
+        blur: 0,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
         child: Row(
           children: [
@@ -757,7 +772,7 @@ class _NowPlayingBar extends StatelessWidget {
         final artist = item?.artist ?? '';
         return GlassPanel(
           radius: 24,
-          blur: 10,
+          blur: 0,
           padding: EdgeInsets.zero,
           onTap: () => context.push('/now-playing'),
           child: Column(
@@ -952,224 +967,176 @@ class _VerseCard extends StatelessWidget {
     }
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
         borderRadius: radius,
         border: Border.all(
           color: isActive
-              ? scheme.onSurface.withValues(alpha: .48)
-              : base.withValues(alpha: isDark ? .12 : .08),
-          width: isActive ? 1.5 : 1,
+              ? scheme.onSurface.withValues(alpha: .38)
+              : base.withValues(alpha: isDark ? .10 : .07),
+          width: isActive ? 1.2 : 1,
         ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: scheme.onSurface.withValues(alpha: .08),
-                  blurRadius: 14,
-                  spreadRadius: 1,
-                ),
-              ]
-            : const [],
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isActive
-              ? [
-                  base.withValues(alpha: isDark ? .15 : .08),
-                  base.withValues(alpha: isDark ? .06 : .02),
-                ]
-              : [
-                  base.withValues(alpha: isDark ? .075 : .045),
-                  base.withValues(alpha: isDark ? .025 : .012),
-                ],
-        ),
+        color: isActive
+            ? base.withValues(alpha: isDark ? .10 : .05)
+            : base.withValues(alpha: isDark ? .045 : .025),
       ),
       child: ClipRRect(
         borderRadius: radius,
-        child: Stack(
-          children: [
-            if (isActive)
-              Positioned(
-                top: -40,
-                right: -30,
-                child: IgnorePointer(
-                  child: Container(
-                    width: 170,
-                    height: 170,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          scheme.onSurface.withValues(alpha: .12),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      GlassBadge(
-                        size: 34,
-                        child: Text(
-                          '${verse.number}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      if (isActive)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            EqualizerBars(
-                              active: isPlaying,
-                              height: 12,
-                              barWidth: 2.2,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isPlaying ? 'NOW RECITING' : 'PAUSED HERE',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.3,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (isAnchor)
-                        const GlassChip(label: 'SEARCH MATCH', dense: true),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: isBookmarked
-                            ? 'Remove bookmark'
-                            : 'Add bookmark',
-                        visualDensity: VisualDensity.compact,
-                        iconSize: 21,
-                        icon: Icon(
-                          isBookmarked
-                              ? Icons.bookmark_rounded
-                              : Icons.bookmark_border_rounded,
-                        ),
-                        onPressed: onToggleBookmark,
-                      ),
-                      PopupMenuButton<String>(
-                        tooltip: 'More actions',
-                        iconSize: 21,
-                        icon: const Icon(Icons.more_horiz_rounded),
-                        onSelected: (value) {
-                          switch (value) {
-                            case 'arabic':
-                              copy(verse.arabic, 'Arabic text');
-                            case 'translation':
-                              copy(translation, 'Translation');
-                            case 'both':
-                              copy(
-                                '${verse.arabic}\n\n$translation',
-                                'Ayah and translation',
-                              );
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'arabic',
-                            child: Text('Copy Arabic'),
-                          ),
-                          PopupMenuItem(
-                            value: 'translation',
-                            child: Text('Copy translation'),
-                          ),
-                          PopupMenuItem(
-                            value: 'both',
-                            child: Text('Copy both'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SelectableText(
-                    verse.arabic,
-                    textAlign: TextAlign.right,
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      height: 2.05,
-                      fontWeight: FontWeight.w500,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  if (translation.isNotEmpty) ...[
-                    const SizedBox(height: 13),
-                    Container(
-                      padding: const EdgeInsets.only(left: 12),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            color: scheme.onSurface.withValues(alpha: .18),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      child: SelectableText(
-                        translation,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.65,
-                        ),
+                  GlassBadge(
+                    size: 34,
+                    child: Text(
+                      '${verse.number}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Text(
-                        'AYAH ${verse.number} OF $totalVerses',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.1,
-                          color: scheme.onSurfaceVariant.withValues(alpha: .85),
+                  ),
+                  const SizedBox(width: 10),
+                  if (isActive)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        EqualizerBars(
+                          active: isPlaying,
+                          height: 12,
+                          barWidth: 2.2,
                         ),
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: audioAvailable ? onPlay : null,
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                        ),
-                        icon: Icon(
-                          isActive && isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 17,
-                        ),
-                        label: Text(
-                          isActive && isPlaying ? 'Pause' : 'Listen',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(width: 6),
+                        Text(
+                          isPlaying ? 'NOW RECITING' : 'PAUSED HERE',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.3,
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
+                      ],
+                    )
+                  else if (isAnchor)
+                    const GlassChip(label: 'SEARCH MATCH', dense: true),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 21,
+                    icon: Icon(
+                      isBookmarked
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                    ),
+                    onPressed: onToggleBookmark,
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'More actions',
+                    iconSize: 21,
+                    icon: const Icon(Icons.more_horiz_rounded),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'arabic':
+                          copy(verse.arabic, 'Arabic text');
+                        case 'translation':
+                          copy(translation, 'Translation');
+                        case 'both':
+                          copy(
+                            '${verse.arabic}\n\n$translation',
+                            'Ayah and translation',
+                          );
+                      }
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'arabic',
+                        child: Text('Copy Arabic'),
                       ),
+                      PopupMenuItem(
+                        value: 'translation',
+                        child: Text('Copy translation'),
+                      ),
+                      PopupMenuItem(value: 'both', child: Text('Copy both')),
                     ],
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              SelectableText(
+                verse.arabic,
+                textAlign: TextAlign.right,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  height: 2.05,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurface,
+                ),
+              ),
+              if (translation.isNotEmpty) ...[
+                const SizedBox(height: 13),
+                Container(
+                  padding: const EdgeInsets.only(left: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: scheme.onSurface.withValues(alpha: .18),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: SelectableText(
+                    translation,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.65,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Text(
+                    'AYAH ${verse.number} OF $totalVerses',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: scheme.onSurfaceVariant.withValues(alpha: .85),
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: audioAvailable ? onPlay : null,
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    icon: Icon(
+                      isActive && isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 17,
+                    ),
+                    label: Text(
+                      isActive && isPlaying ? 'Pause' : 'Listen',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
