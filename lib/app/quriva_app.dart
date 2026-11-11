@@ -27,8 +27,8 @@ class QurivaApp extends ConsumerWidget {
             Positioned.fill(
               child: ColoredBox(
                 color: isDark
-                    ? Colors.black.withValues(alpha: .35)
-                    : Colors.white.withValues(alpha: .30),
+                    ? Colors.black.withValues(alpha: .12)
+                    : Colors.white.withValues(alpha: .10),
               ),
             ),
             Positioned.fill(child: child ?? const SizedBox.shrink()),

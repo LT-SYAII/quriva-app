@@ -8,6 +8,28 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.4.0] — 2026-11-11
+
+### Added
+- Richer modern interface across Home, Reader, mini player, and Now Playing:
+  immersive landscape hero cards, floating glass controls, animated equalizer
+  indicators, advanced playback/ayah progress, an Up Next card, and improved
+  typography and metadata hierarchy.
+- Reader comfort controls for changing Arabic text size without leaving the
+  surah, plus copy actions and a jump-to-current-ayah control.
+- Clear audio loading, buffering, failure, fallback, and retry states.
+
+### Fixed
+- Play now starts from whichever per-surah Quran.com audio source is ready
+  first instead of waiting for the larger timestamp request to finish.
+- Failed primary audio sources automatically fall back to the catalog URL and
+  can be retried from the reader, mini player, or Now Playing screen.
+- Prevented overlapping source loads and fixed replay after a surah reaches
+  the end.
+- Corrected async playback handling so starting a track no longer waits for
+  the entire recitation to finish; this also keeps multi-surah auto-advance
+  working reliably.
+
 ## [0.3.0] — 2026-11-11
 
 ### Added

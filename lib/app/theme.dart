@@ -12,41 +12,86 @@ abstract final class QurivaTheme {
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
 
-  static SystemUiOverlayStyle _overlay(Brightness brightness) => switch (brightness) {
+  static SystemUiOverlayStyle _overlay(Brightness brightness) =>
+      switch (brightness) {
         Brightness.dark => SystemUiOverlayStyle.light.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: _darkBase,
-            systemNavigationBarIconBrightness: Brightness.light,
-          ),
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: _darkBase,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
         Brightness.light => SystemUiOverlayStyle.dark.copyWith(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: _lightBase,
-            systemNavigationBarIconBrightness: Brightness.dark,
-          ),
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: _lightBase,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
       };
 
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
-    final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF8F8F8F),
-      brightness: brightness,
-    ).copyWith(
-      surface: isDark ? _darkBase : _lightBase,
-      onSurface: isDark ? Colors.white : const Color(0xFF0A0A0A),
-      primary: isDark ? Colors.white : const Color(0xFF0A0A0A),
-      onPrimary: isDark ? _darkBase : Colors.white,
-      surfaceTint: Colors.transparent,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF8F8F8F),
+          brightness: brightness,
+        ).copyWith(
+          surface: isDark ? _darkBase : _lightBase,
+          onSurface: isDark ? Colors.white : const Color(0xFF0A0A0A),
+          primary: isDark ? Colors.white : const Color(0xFF0A0A0A),
+          onPrimary: isDark ? _darkBase : Colors.white,
+          surfaceTint: Colors.transparent,
+        );
 
     final hairline = isDark
         ? Colors.white.withValues(alpha: .08)
         : Colors.black.withValues(alpha: .07);
+    final baseTextTheme = ThemeData(brightness: brightness).textTheme;
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: Colors.transparent,
       splashFactory: InkSparkle.splashFactory,
+      textTheme: baseTextTheme.copyWith(
+        headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.1,
+        ),
+        headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -.5,
+        ),
+        headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -.2,
+        ),
+        titleLarge: baseTextTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        titleMedium: baseTextTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        titleSmall: baseTextTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        bodyMedium: baseTextTheme.bodyMedium?.copyWith(height: 1.42),
+        labelLarge: baseTextTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      sliderTheme: SliderThemeData(
+        trackHeight: 3,
+        activeTrackColor: scheme.onSurface,
+        inactiveTrackColor: scheme.onSurface.withValues(alpha: .12),
+        secondaryActiveTrackColor: scheme.onSurface.withValues(alpha: .20),
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+        overlayShape: const RoundSliderOverlayShape(overlayRadius: 15),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
@@ -77,7 +122,9 @@ abstract final class QurivaTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? Colors.white.withValues(alpha: .05) : Colors.black.withValues(alpha: .03),
+        fillColor: isDark
+            ? Colors.white.withValues(alpha: .05)
+            : Colors.black.withValues(alpha: .03),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(color: hairline),
@@ -103,7 +150,9 @@ abstract final class QurivaTheme {
         ),
       ),
       dividerTheme: DividerThemeData(color: hairline, thickness: 1, space: 1),
-      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+      ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
           shape: WidgetStatePropertyAll(
