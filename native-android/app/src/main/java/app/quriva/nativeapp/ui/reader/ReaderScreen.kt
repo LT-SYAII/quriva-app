@@ -39,6 +39,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +90,17 @@ fun ReaderScreen(
     }
 
     val listState = rememberLazyListState()
+    var didResume by remember { mutableStateOf(false) }
+    LaunchedEffect(state.resumeVerse, state.verses) {
+        val target = state.resumeVerse ?: return@LaunchedEffect
+        if (!didResume && state.verses.isNotEmpty()) {
+            val index = state.verses.indexOfFirst { it.number == target }
+            if (index >= 0) {
+                listState.scrollToItem((index + 1).coerceAtLeast(0))
+                didResume = true
+            }
+        }
+    }
     LaunchedEffect(activeVerse, state.verses, thisPlaying) {
         if (thisPlaying && activeVerse > 0) {
             viewModel.saveProgress(activeVerse)
@@ -97,7 +110,7 @@ fun ReaderScreen(
     }
 
     LaunchedEffect(state.verses) {
-        if (state.verses.isNotEmpty()) {
+        if (state.verses.isNotEmpty() && state.resumeVerse == null) {
             viewModel.saveProgress(state.verses.first().number)
         }
     }

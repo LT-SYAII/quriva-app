@@ -205,7 +205,7 @@ private fun HomeScreen(
                 modifier = Modifier.padding(padding),
                 onOpen = { surahId -> onOpenChapter(Chapter(surahId, "Surah $surahId", "", "", 0, "")) },
             )
-            else -> SettingsScreen(onBack = { selected = 0 })
+            else -> SettingsScreen(onBack = null)
         }
     }
 }

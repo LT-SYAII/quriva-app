@@ -41,7 +41,7 @@ import app.quriva.nativeapp.QurivaApplication
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: (() -> Unit)? = null) {
     val app = LocalContext.current.applicationContext as QurivaApplication
     val vm: SettingsViewModel = viewModel(
         factory = SettingsViewModel.factory(app.container.repository, app.container.preferences),
@@ -55,7 +55,11 @@ fun SettingsScreen(onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    }
+                },
             )
         },
     ) { padding ->

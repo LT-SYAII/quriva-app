@@ -108,6 +108,8 @@ class QuranRepository(
 
     fun observeProgress(): Flow<ReadingProgressEntity?> = progressDao.observe()
 
+    suspend fun getReadingProgress(): ReadingProgressEntity? = progressDao.get()
+
     suspend fun saveProgress(surahId: Int, verseId: Int) =
         progressDao.upsert(ReadingProgressEntity(surahId = surahId, verseId = verseId))
 

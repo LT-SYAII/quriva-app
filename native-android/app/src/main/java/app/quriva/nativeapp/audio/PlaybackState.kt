@@ -11,6 +11,7 @@ data class NowPlaying(
     val audioUrl: String = "",
     val reciterId: Int = 7,
     val timestamps: List<AyahTimestamp> = emptyList(),
+    val reloadKey: Long = 0L,
 )
 
 object PlaybackState {

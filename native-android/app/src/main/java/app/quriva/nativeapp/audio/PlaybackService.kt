@@ -28,6 +28,7 @@ class PlaybackService : MediaSessionService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var progressJob: Job? = null
     private var currentUrl: String? = null
+    private var currentReloadKey: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -92,10 +93,12 @@ class PlaybackService : MediaSessionService() {
                     currentUrl = null
                     PlaybackState.updateDuration(0L)
                     PlaybackState.updatePosition(0L)
+                    currentReloadKey = 0L
                 } else if (np.audioUrl.isNotBlank()) {
-                    val forceReload = PlaybackState.error.value != null && np.audioUrl == currentUrl
-                    if (np.audioUrl != currentUrl || forceReload) {
+                    val changed = np.audioUrl != currentUrl || np.reloadKey != currentReloadKey
+                    if (changed) {
                         currentUrl = np.audioUrl
+                        currentReloadKey = np.reloadKey
                         PlaybackState.updateError(null)
                         val meta = MediaMetadata.Builder()
                             .setTitle(np.chapterName)
