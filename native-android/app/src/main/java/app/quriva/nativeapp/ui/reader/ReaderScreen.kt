@@ -64,7 +64,7 @@ fun ReaderScreen(
     val context = LocalContext.current
     val app = context.applicationContext as QurivaApplication
     val viewModel: ReaderViewModel = viewModel(
-        factory = ReaderViewModel.factory(app.container.repository),
+        factory = ReaderViewModel.factory(app.container.repository, app.container.preferences),
     )
     val state by viewModel.uiState.collectAsState()
 

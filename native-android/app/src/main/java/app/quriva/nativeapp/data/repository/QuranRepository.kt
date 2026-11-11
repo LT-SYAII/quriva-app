@@ -8,7 +8,11 @@ import app.quriva.nativeapp.data.db.ReadingProgressEntity
 import app.quriva.nativeapp.data.db.VerseCacheEntity
 import app.quriva.nativeapp.data.model.Chapter
 import app.quriva.nativeapp.data.model.ChapterAudioTimeline
+import app.quriva.nativeapp.data.model.ChapterInfo
 import app.quriva.nativeapp.data.model.ReaderVerse
+import app.quriva.nativeapp.data.model.Reciter
+import app.quriva.nativeapp.data.model.SearchResult
+import app.quriva.nativeapp.data.model.TranslationResource
 import app.quriva.nativeapp.data.model.toDomain
 import app.quriva.nativeapp.data.model.toReaderVerse
 import kotlinx.coroutines.flow.Flow
@@ -118,4 +122,16 @@ class QuranRepository(
                 translatedName = it.translatedName,
             )
         }
+
+    suspend fun getReciters(language: String = "en"): List<Reciter> =
+        api.recitations(language).recitations.map { it.toDomain() }
+
+    suspend fun getTranslationResources(language: String = "en"): List<TranslationResource> =
+        api.translationResources(language).translations.map { it.toDomain() }
+
+    suspend fun getChapterInfo(chapterId: Int, language: String = "en"): ChapterInfo? =
+        api.chapterInfo(chapterId, language).chapterInfo?.toDomain()
+
+    suspend fun search(query: String, language: String = "en"): List<SearchResult> =
+        api.search(query = query, language = language).search.results.map { it.toDomain() }
 }

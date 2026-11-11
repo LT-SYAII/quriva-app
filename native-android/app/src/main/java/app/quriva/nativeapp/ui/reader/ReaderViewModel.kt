@@ -9,12 +9,14 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import app.quriva.nativeapp.data.model.Chapter
 import app.quriva.nativeapp.data.model.ChapterAudioTimeline
 import app.quriva.nativeapp.data.model.ReaderVerse
+import app.quriva.nativeapp.data.preferences.UserPreferencesRepository
 import app.quriva.nativeapp.data.repository.QuranRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class ReaderUiState(
@@ -29,6 +31,7 @@ data class ReaderUiState(
 class ReaderViewModel(
     savedStateHandle: SavedStateHandle,
     private val repository: QuranRepository,
+    private val preferences: UserPreferencesRepository,
 ) : ViewModel() {
     val chapterId: Int = savedStateHandle.get<Int>("chapterId") ?: 1
     val chapterName: String = savedStateHandle.get<String>("chapterName") ?: "Surah"
@@ -54,10 +57,11 @@ class ReaderViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true, error = null)
             try {
-                val chaptersDeferred = async { repository.getChapters("en") }
-                val versesDeferred = async { repository.getReaderVerses(chapterId, 20) }
+                val prefs = preferences.flow.first()
+                val chaptersDeferred = async { repository.getChapters(prefs.appLanguage) }
+                val versesDeferred = async { repository.getReaderVerses(chapterId, prefs.translationId) }
                 val timelineDeferred = async {
-                    runCatching { repository.getChapterAudioTimeline(chapterId, 7) }.getOrNull()
+                    runCatching { repository.getChapterAudioTimeline(chapterId, prefs.reciterId) }.getOrNull()
                 }
                 val chapter = chaptersDeferred.await().firstOrNull { it.id == chapterId }
                 val verses = versesDeferred.await()
@@ -90,11 +94,14 @@ class ReaderViewModel(
     }
 
     companion object {
-        fun factory(repository: QuranRepository): ViewModelProvider.Factory =
+        fun factory(
+            repository: QuranRepository,
+            preferences: UserPreferencesRepository,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
-                    ReaderViewModel(extras.createSavedStateHandle(), repository) as T
+                    ReaderViewModel(extras.createSavedStateHandle(), repository, preferences) as T
             }
     }
 }

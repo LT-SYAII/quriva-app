@@ -1,8 +1,12 @@
 package app.qurora.nativeapp.data.api
 
+import app.quriva.nativeapp.data.model.ChapterInfoResponse
 import app.quriva.nativeapp.data.model.ChapterRecitationResponse
 import app.quriva.nativeapp.data.model.ChaptersResponse
+import app.quriva.nativeapp.data.model.RecitersResponse
+import app.quriva.nativeapp.data.model.SearchResponse
 import app.quriva.nativeapp.data.model.TranslationsResponse
+import app.quriva.nativeapp.data.model.TranslationsResponseList
 import app.quriva.nativeapp.data.model.VersesResponse
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
@@ -38,6 +42,26 @@ interface QuranApi {
         @Path("chapterNumber") chapterNumber: Int,
         @Query("segments") segments: Boolean = true,
     ): ChapterRecitationResponse
+
+    @GET("resources/recitations")
+    suspend fun recitations(@Query("language") language: String = "en"): RecitersResponse
+
+    @GET("resources/translations")
+    suspend fun translationResources(@Query("language") language: String = "en"): TranslationsResponseList
+
+    @GET("chapters/{chapterId}/info")
+    suspend fun chapterInfo(
+        @Path("chapterId") chapterId: Int,
+        @Query("language") language: String = "en",
+    ): ChapterInfoResponse
+
+    @GET("search")
+    suspend fun search(
+        @Query("q") query: String,
+        @Query("size") size: Int = 20,
+        @Query("page") page: Int = 1,
+        @Query("language") language: String = "en",
+    ): SearchResponse
 
     companion object {
         private const val BASE_URL = "https://api.quran.com/api/v4/"

@@ -18,13 +18,13 @@ This directory is the **native Kotlin rewrite** of Quriva, created to replace th
 
 ## Migration phases
 1. **Foundation:** Gradle/Kotlin/Compose project, app shell, theme, Compose Navigation. ✅
-2. **Data layer (in progress):** Quran.com API client/models/repository (chapters, verses, translations, timelines) with **Room cache** (chapters/verses) and **DataStore preferences** scaffolding. 🔄
-3. **Core reading (in progress):** Surah list (live/cached) → **Reader** (Arabic + translation, metadata, bookmark toggle, reading-progress save) and **Library** (bookmarks + continue-reading) implemented. Next: search, chapter info. 🔄
-4. **Audio (in progress):** **Media3 ExoPlayer** playback in reader with **ayah timeline highlighting/auto-scroll**. Next: full background **MediaSessionService + notification**, mini/now-playing UI, reciter/catalog selection. 🔄
-5. **Polish & parity:** chapter info, reciter/translation selection UI, settings, offline/error/empty behavior parity.
+2. **Data layer (in progress):** Quran.com API client/models/repository (chapters, verses, translations, timelines, reciters, translation resources, search, chapter info) with **Room cache** (chapters/verses) and **DataStore preferences**. 🔄
+3. **Core reading (in progress):** Surah list (live/cached) → **Reader** (Arabic + translation, metadata, bookmark toggle, progress save), **Library** (bookmarks + continue-reading), and **Search** implemented. Next: chapter info screen, richer search UX. 🔄
+4. **Audio (in progress):** **Media3 ExoPlayer** playback in reader with **ayah timeline highlighting/auto-scroll**. Next: full background **MediaSessionService + notification**, mini/now-playing UI, reciter/catalog selection UX. 🔄
+5. **Polish & parity:** **Settings** (reciter/translation selection wired to prefs) added; remaining: chapter info, theme/language controls, offline/error/empty behavior parity.
 6. **Release hardening:** baseline profiles, R8/resource shrinking, ABI splits/AAB, signing/CI, remove/replace Flutter app once parity is verified.
 
-> Status: core read flow, local persistence (cache/bookmarks/progress), and in-reader synced audio are ported to Kotlin. Full parity (background service/notification, search/info/settings, reciter/translation UX) and release swap still remain; the Flutter app stays functional throughout.
+> Status: core read + audio-highlight, persistence, search, and basic settings/reciter-translation selection are ported to Kotlin. Remaining for full parity: background media service/notification, chapter info, full settings/polish, and release swap. Flutter app remains functional.
 
 ## Build (when Android SDK/toolchain is available)
 ```bash
