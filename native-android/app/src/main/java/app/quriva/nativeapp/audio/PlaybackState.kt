@@ -23,6 +23,9 @@ object PlaybackState {
     private val _positionMs = MutableStateFlow(0L)
     val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
 
+    private val _durationMs = MutableStateFlow(0L)
+    val durationMs: StateFlow<Long> = _durationMs.asStateFlow()
+
     private val _activeVerse = MutableStateFlow(-1)
     val activeVerse: StateFlow<Int> = _activeVerse.asStateFlow()
 
@@ -32,6 +35,7 @@ object PlaybackState {
     fun updateNowPlaying(np: NowPlaying?) { _nowPlaying.value = np }
     fun updatePlaying(playing: Boolean) { _isPlaying.value = playing }
     fun updatePosition(pos: Long) { _positionMs.value = pos }
+    fun updateDuration(dur: Long) { _durationMs.value = dur.coerceAtLeast(0L) }
     fun updateActiveVerse(v: Int) { _activeVerse.value = v }
     fun notifyEnded(chapterId: Int) { _endedChapterId.value = chapterId }
     fun consumeEnded() { _endedChapterId.value = null }

@@ -82,6 +82,8 @@ class PlaybackService : MediaSessionService() {
                     exo.stop()
                     exo.clearMediaItems()
                     currentUrl = null
+                    PlaybackState.updateDuration(0L)
+                    PlaybackState.updatePosition(0L)
                 } else if (np.audioUrl.isNotBlank() && np.audioUrl != currentUrl) {
                     currentUrl = np.audioUrl
                     val meta = MediaMetadata.Builder()
@@ -107,6 +109,8 @@ class PlaybackService : MediaSessionService() {
         progressJob = serviceScope.launch {
             while (isActive) {
                 PlaybackState.updatePosition(exo.currentPosition)
+                val d = exo.duration
+                if (d > 0) PlaybackState.updateDuration(d)
                 val ts = PlaybackState.nowPlaying.value?.timestamps.orEmpty()
                 if (ts.isNotEmpty()) {
                     val pos = exo.currentPosition.toInt()
