@@ -8,6 +8,22 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.3.0] — 2026-11-11
+
+### Added
+- Spotify-style player experience: persistent mini player above the bottom
+  navigation and a full-screen Now Playing view with large artwork, seek bar,
+  play/pause and previous/next surah transport.
+- Lyrics-style ayah highlighting: chapter recitations fetched with
+  `?segments=true` provide per-ayah timestamps; the reader highlights the ayah
+  being recited and auto-scrolls to follow along, and Now Playing shows the
+  current ayah (Arabic + translation).
+- Procedural monochrome landscape background (no bundled photos, no extra
+  network hosts) with a liquid-glass veil across the app for a richer look.
+
+### Changed
+- Home hero redesigned with album-style artwork.
+
 ## [0.2.5] — 2026-11-10
 
 ### Fixed

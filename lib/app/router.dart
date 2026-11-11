@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:quriva/features/audio/presentation/now_playing_screen.dart';
 import 'package:quriva/features/bookmarks/presentation/bookmarks_screen.dart';
 import 'package:quriva/features/quran/presentation/chapter_info_screen.dart';
 import 'package:quriva/features/quran/presentation/home_screen.dart';
@@ -24,6 +25,10 @@ GoRouter buildRouter() => GoRouter(
               builder: (context, state) => const SettingsScreen(),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/now-playing',
+          builder: (context, state) => const NowPlayingScreen(),
         ),
         GoRoute(
           path: '/search',

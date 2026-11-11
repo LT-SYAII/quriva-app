@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:quriva/features/quran/domain/quran_models.dart';
 
 /// App-lifetime audio player.
 ///
@@ -15,11 +17,13 @@ class NextSurah {
     required this.surahId,
     required this.url,
     required this.item,
+    this.timeline,
   });
 
   final int surahId;
   final String url;
   final MediaItem item;
+  final List<VerseTimestamp>? timeline;
 }
 
 /// Resolves the next surah track for auto-advance (returns null to stop).
@@ -35,6 +39,7 @@ class ChapterAudioPlayer {
         unawaited(_autoAdvance());
       }
     });
+    _player.positionStream.listen(_updateActiveVerse);
   }
 
   final AudioPlayer _player;
@@ -44,6 +49,10 @@ class ChapterAudioPlayer {
   int? _currentRecitationId;
   NextSurahResolver? _nextResolver;
   bool _advancing = false;
+  List<VerseTimestamp> _timeline = const [];
+
+  /// Currently recited ayah, kept in sync with playback position.
+  final ValueNotifier<VerseTimestamp?> activeVerse = ValueNotifier(null);
 
   Stream<bool> get playingStream =>
       _player.playerStateStream.map((state) => state.playing);
@@ -59,6 +68,8 @@ class ChapterAudioPlayer {
 
   Duration get duration => _player.duration ?? Duration.zero;
 
+  Duration get position => _player.position;
+
   bool get playing => _player.playing;
 
   bool get active => _loadedId != null;
@@ -73,13 +84,35 @@ class ChapterAudioPlayer {
 
   int? get currentRecitationId => _currentRecitationId;
 
+  List<VerseTimestamp> get timeline => _timeline;
+
+  void setTimeline(List<VerseTimestamp> timeline) {
+    _timeline = timeline;
+    _updateActiveVerse(_player.position);
+  }
+
+  void _updateActiveVerse(Duration position) {
+    if (_timeline.isEmpty) {
+      if (activeVerse.value != null) activeVerse.value = null;
+      return;
+    }
+    final ms = position.inMilliseconds;
+    for (final entry in _timeline) {
+      if (ms >= entry.fromMs && ms <= entry.toMs) {
+        if (activeVerse.value?.verseKey != entry.verseKey) {
+          activeVerse.value = entry;
+        }
+        return;
+      }
+    }
+  }
+
   bool _isSameTrack(int? surahId, int? recitationId, String url) {
     if (surahId != null &&
         recitationId != null &&
         _currentSurahId != null &&
         _currentRecitationId != null) {
-      return _currentSurahId == surahId &&
-          _currentRecitationId == recitationId;
+      return _currentSurahId == surahId && _currentRecitationId == recitationId;
     }
     return _loadedId == url;
   }
@@ -92,17 +125,22 @@ class ChapterAudioPlayer {
     int? surahId,
     int? recitationId,
     NextSurahResolver? nextResolver,
+    List<VerseTimestamp>? timeline,
   }) async {
     final same = _isSameTrack(surahId, recitationId, url);
 
     _currentSurahId = surahId ?? _currentSurahId;
     _currentRecitationId = recitationId ?? _currentRecitationId;
     _nextResolver = nextResolver ?? _nextResolver;
+    if (timeline != null) {
+      _timeline = timeline;
+    } else if (!same) {
+      _timeline = const [];
+      activeVerse.value = null;
+    }
 
     if (!same || _loadedId != url) {
-      await _player.setAudioSource(
-        AudioSource.uri(Uri.parse(url), tag: item),
-      );
+      await _player.setAudioSource(AudioSource.uri(Uri.parse(url), tag: item));
       _loadedId = url;
     }
     _currentItem = item;
@@ -131,6 +169,7 @@ class ChapterAudioPlayer {
     int? surahId,
     int? recitationId,
     NextSurahResolver? nextResolver,
+    List<VerseTimestamp>? timeline,
   }) async {
     if (playing && _isSameTrack(surahId, recitationId, url)) {
       await pause();
@@ -141,23 +180,43 @@ class ChapterAudioPlayer {
         surahId: surahId,
         recitationId: recitationId,
         nextResolver: nextResolver,
+        timeline: timeline,
       );
     }
   }
 
   Future<void> seek(Duration position) => _player.seek(position);
 
+  /// Next/previous track controls (Spotify-style transport).
+  Future<void> skipToNext() => _goToAdjacent(1);
+
+  Future<void> skipToPrevious() async {
+    if (_player.position > const Duration(seconds: 4)) {
+      await _player.seek(Duration.zero);
+      return;
+    }
+    await _goToAdjacent(-1);
+  }
+
   Future<void> _autoAdvance() async {
     if (_advancing) return;
+    _advancing = true;
+    try {
+      await _goToAdjacent(1);
+    } finally {
+      _advancing = false;
+    }
+  }
+
+  Future<void> _goToAdjacent(int delta) async {
     final resolver = _nextResolver;
     final surahId = _currentSurahId;
     final recitationId = _currentRecitationId;
     if (resolver == null || surahId == null || recitationId == null) return;
-    final nextId = surahId + 1;
-    if (nextId > 114) return;
-    _advancing = true;
+    final target = surahId + delta;
+    if (target < 1 || target > 114) return;
     try {
-      final next = await resolver(nextId, recitationId);
+      final next = await resolver(target, recitationId);
       if (next == null) return;
       await playSurah(
         url: next.url,
@@ -165,11 +224,10 @@ class ChapterAudioPlayer {
         surahId: next.surahId,
         recitationId: recitationId,
         nextResolver: resolver,
+        timeline: next.timeline,
       );
     } catch (_) {
-      // Best-effort: stay on completed track if advancing fails.
-    } finally {
-      _advancing = false;
+      // Best-effort: stay on current track if moving fails.
     }
   }
 }

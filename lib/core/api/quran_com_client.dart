@@ -12,9 +12,8 @@ import 'package:quriva/features/quran/domain/quran_models.dart';
 /// See ATTRIBUTIONS.md and https://quran.com/api for details.
 class QuranComClient {
   QuranComClient({http.Client? client, Uri? baseUrl})
-      : _client = client ?? http.Client(),
-        baseUrl =
-            baseUrl ?? Uri.https('api.quran.com', '/api/v4');
+    : _client = client ?? http.Client(),
+      baseUrl = baseUrl ?? Uri.https('api.quran.com', '/api/v4');
 
   final http.Client _client;
   final Uri baseUrl;
@@ -22,10 +21,10 @@ class QuranComClient {
   static const Duration _timeout = Duration(seconds: 20);
 
   Future<dynamic> _getJson(String path, [Map<String, String>? query]) async {
-    final uri = baseUrl.replace(path: '${baseUrl.path}$path', queryParameters: {
-      ...baseUrl.queryParameters,
-      ...?query,
-    });
+    final uri = baseUrl.replace(
+      path: '${baseUrl.path}$path',
+      queryParameters: {...baseUrl.queryParameters, ...?query},
+    );
     http.Response response;
     try {
       response = await _client.get(uri).timeout(_timeout);
@@ -53,10 +52,9 @@ class QuranComClient {
   }
 
   Future<List<VerseText>> fetchChapterVerses(int chapterNumber) async {
-    final data = await _getJson(
-      '/quran/verses/uthmani',
-      {'chapter_number': '$chapterNumber'},
-    );
+    final data = await _getJson('/quran/verses/uthmani', {
+      'chapter_number': '$chapterNumber',
+    });
     return [
       for (final item in (data['verses'] as List))
         VerseText.fromJson(item as Map<String, dynamic>),
@@ -67,10 +65,9 @@ class QuranComClient {
     int chapterNumber,
     int translationId,
   ) async {
-    final data = await _getJson(
-      '/quran/translations/$translationId',
-      {'chapter_number': '$chapterNumber'},
-    );
+    final data = await _getJson('/quran/translations/$translationId', {
+      'chapter_number': '$chapterNumber',
+    });
     return [
       for (final item in (data['translations'] as List))
         (item as Map<String, dynamic>)['text'] as String? ?? '',
@@ -81,16 +78,18 @@ class QuranComClient {
     int chapterNumber,
     String language,
   ) async {
-    final data = await _getJson(
-      '/chapters/$chapterNumber/info',
-      {'language': language},
-    );
+    final data = await _getJson('/chapters/$chapterNumber/info', {
+      'language': language,
+    });
     final info = data['chapter_info'];
     if (info is! Map<String, dynamic>) return null;
     return ChapterInfo.fromJson(info);
   }
 
-  Future<String?> fetchChapterAudioUrl(int recitationId, int chapterNumber) async {
+  Future<String?> fetchChapterAudioUrl(
+    int recitationId,
+    int chapterNumber,
+  ) async {
     final data = await _getJson(
       '/chapter_recitations/$recitationId/$chapterNumber',
     );
@@ -99,11 +98,34 @@ class QuranComClient {
     return file['audio_url'] as String?;
   }
 
-  Future<List<Reciter>> fetchRecitations(String language) async {
+  /// Chapter recitation plus per-ayah timestamps (`?segments=true`), used to
+  /// highlight the ayah currently being recited (lyrics-style).
+  Future<ChapterAudioTimeline> fetchChapterAudioTimeline(
+    int recitationId,
+    int chapterNumber,
+  ) async {
     final data = await _getJson(
-      '/resources/recitations',
-      {'language': language},
+      '/chapter_recitations/$recitationId/$chapterNumber',
+      {'segments': 'true'},
     );
+    final file = data['audio_file'];
+    if (file is! Map<String, dynamic>) {
+      return const ChapterAudioTimeline(audioUrl: null, timestamps: []);
+    }
+    final raw = file['timestamps'] as List? ?? const [];
+    return ChapterAudioTimeline(
+      audioUrl: file['audio_url'] as String?,
+      timestamps: [
+        for (final item in raw)
+          if (item is Map<String, dynamic>) VerseTimestamp.fromJson(item),
+      ],
+    );
+  }
+
+  Future<List<Reciter>> fetchRecitations(String language) async {
+    final data = await _getJson('/resources/recitations', {
+      'language': language,
+    });
     return [
       for (final item in (data['recitations'] as List))
         Reciter.fromJson(item as Map<String, dynamic>),
@@ -123,10 +145,9 @@ class QuranComClient {
   }
 
   Future<List<TranslationResource>> fetchTranslations(String language) async {
-    final data = await _getJson(
-      '/resources/translations',
-      {'language': language},
-    );
+    final data = await _getJson('/resources/translations', {
+      'language': language,
+    });
     return [
       for (final item in (data['translations'] as List))
         TranslationResource.fromJson(item as Map<String, dynamic>),
@@ -139,15 +160,12 @@ class QuranComClient {
     int size = 25,
     String language = 'en',
   }) async {
-    final data = await _getJson(
-      '/search',
-      {
-        'q': query,
-        'page': '$page',
-        'size': '$size',
-        'language': language,
-      },
-    );
+    final data = await _getJson('/search', {
+      'q': query,
+      'page': '$page',
+      'size': '$size',
+      'language': language,
+    });
     return SearchPage.fromJson(data['search'] as Map<String, dynamic>);
   }
 

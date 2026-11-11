@@ -31,11 +31,38 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   final _itemPositionsListener = ItemPositionsListener.create();
   bool _didAnchorJump = false;
   bool _hideBar = false;
+  int? _lastAutoScrolledVerse;
 
   @override
   void initState() {
     super.initState();
     _itemPositionsListener.itemPositions.addListener(_saveProgress);
+    globalAudioPlayer.activeVerse.addListener(_onActiveVerseChanged);
+  }
+
+  @override
+  void dispose() {
+    globalAudioPlayer.activeVerse.removeListener(_onActiveVerseChanged);
+    _itemPositionsListener.itemPositions.removeListener(_saveProgress);
+    super.dispose();
+  }
+
+  void _onActiveVerseChanged() {
+    final active = globalAudioPlayer.activeVerse.value;
+    if (!mounted || active == null) return;
+    if (active.chapterId != widget.surahId) return;
+    if (!globalAudioPlayer.playing) return;
+    if (_lastAutoScrolledVerse == active.verseNumber) return;
+    _lastAutoScrolledVerse = active.verseNumber;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_itemScrollController.isAttached) return;
+      _itemScrollController.scrollTo(
+        index: active.verseNumber,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+        alignment: .12,
+      );
+    });
   }
 
   void _saveProgress() {
@@ -45,9 +72,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         .reduce((a, b) => a.itemLeadingEdge < b.itemLeadingEdge ? a : b)
         .index;
     if (first < 2) return;
-    unawaited(
-      ref.read(databaseProvider).saveProgress(widget.surahId, first),
-    );
+    unawaited(ref.read(databaseProvider).saveProgress(widget.surahId, first));
   }
 
   void _jumpToAnchorOnce() {
@@ -71,9 +96,10 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
 
   Future<NextSurah?> _resolveNext(int nextSurahId, int recitationId) async {
     try {
-      final catalog =
-          await ref.read(reciterCatalogProvider(recitationId).future);
-      final url = catalog[nextSurahId];
+      final timeline = await ref.read(
+        chapterAudioTimelineProvider((nextSurahId, recitationId)).future,
+      );
+      final url = timeline.audioUrl;
       if (url == null || url.isEmpty) return null;
       final title = _titleFor(nextSurahId);
       final reciters = ref.read(recitersProvider('en')).value;
@@ -88,18 +114,20 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           artist: reciter,
           playable: true,
         ),
+        timeline: timeline.timestamps,
       );
     } catch (_) {
       return null;
     }
   }
 
-  void _toggleSurahAudio({
+  Future<void> _toggleSurahAudio({
     required String? url,
     required String surahTitle,
     required String reciterName,
     required int recitationId,
-  }) {
+    required List<VerseTimestamp> timeline,
+  }) async {
     if (url == null || url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -108,6 +136,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       );
       return;
     }
+    var effectiveTimeline = timeline;
+    if (effectiveTimeline.isEmpty) {
+      try {
+        effectiveTimeline = (await ref.read(
+          chapterAudioTimelineProvider((widget.surahId, recitationId)).future,
+        )).timestamps;
+      } catch (_) {
+        // Continue without highlight data.
+      }
+    }
+    if (!mounted) return;
     final item = MediaItem(
       id: url,
       album: 'Quriva',
@@ -122,6 +161,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
         surahId: widget.surahId,
         recitationId: recitationId,
         nextResolver: _resolveNext,
+        timeline: effectiveTimeline,
       ),
     );
   }
@@ -137,6 +177,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final reciterName = reciterNameFor(reciters.value, reciterId);
     final surahTitle = resolveSurahTitle(ref, widget.surahId);
     final audioUrl = catalog.value?[widget.surahId];
+    final timeline =
+        ref
+            .watch(chapterAudioTimelineProvider((widget.surahId, reciterId)))
+            .value
+            ?.timestamps ??
+        const <VerseTimestamp>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -160,9 +206,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
           _jumpToAnchorOnce();
           final bookmarks =
               ref.watch(bookmarksProvider).value ?? const <Bookmark>[];
-          final bookmarked = {
-            for (final item in bookmarks) item.verseId,
-          };
+          final bookmarked = {for (final item in bookmarks) item.verseId};
           final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
           return StreamBuilder<PlayerState>(
             stream: globalAudioPlayer.playerStateStream,
@@ -171,7 +215,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
               final activeThisSurah =
                   globalAudioPlayer.currentSurahId == widget.surahId;
               final processing = snapshot.data?.processingState;
-              final buffering = activeThisSurah &&
+              final buffering =
+                  activeThisSurah &&
                   (processing == ProcessingState.loading ||
                       processing == ProcessingState.buffering);
               final showBar = globalAudioPlayer.active && !_hideBar;
@@ -201,29 +246,41 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                             surahTitle: surahTitle.split(' · ').first,
                             reciterName: reciterName,
                             recitationId: reciterId,
+                            timeline: timeline,
                           ),
                         );
                       }
                       final verse = verses[index - 1];
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: _VerseCard(
-                          verse: verse,
-                          isBookmarked: bookmarked.contains(verse.number),
-                          isAnchor: widget.anchorVerse == verse.number,
-                          fontSize: fontSize,
-                          isPlaying: playing && activeThisSurah,
-                          audioAvailable:
-                              audioUrl != null && audioUrl.isNotEmpty,
-                          onToggleBookmark: () => ref
-                              .read(databaseProvider)
-                              .toggleBookmark(widget.surahId, verse.number),
-                          onPlay: () => _toggleSurahAudio(
-                            url: audioUrl,
-                            surahTitle: surahTitle.split(' · ').first,
-                            reciterName: reciterName,
-                            recitationId: reciterId,
-                          ),
+                        child: ValueListenableBuilder<VerseTimestamp?>(
+                          valueListenable: globalAudioPlayer.activeVerse,
+                          builder: (context, active, _) {
+                            final isActive =
+                                active != null &&
+                                active.chapterId == widget.surahId &&
+                                active.verseNumber == verse.number;
+                            return _VerseCard(
+                              verse: verse,
+                              isBookmarked: bookmarked.contains(verse.number),
+                              isAnchor: widget.anchorVerse == verse.number,
+                              isActive: isActive,
+                              fontSize: fontSize,
+                              isPlaying: playing && activeThisSurah,
+                              audioAvailable:
+                                  audioUrl != null && audioUrl.isNotEmpty,
+                              onToggleBookmark: () => ref
+                                  .read(databaseProvider)
+                                  .toggleBookmark(widget.surahId, verse.number),
+                              onPlay: () => _toggleSurahAudio(
+                                url: audioUrl,
+                                surahTitle: surahTitle.split(' · ').first,
+                                reciterName: reciterName,
+                                recitationId: reciterId,
+                                timeline: timeline,
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
@@ -273,8 +330,8 @@ class _NowPlayingBar extends StatelessWidget {
         final item = globalAudioPlayer.currentItem;
         final surahId = globalAudioPlayer.currentSurahId;
         final reciterId = globalAudioPlayer.currentRecitationId;
-        final title = item?.title ??
-            (surahId != null ? 'Surah $surahId' : 'Recitation');
+        final title =
+            item?.title ?? (surahId != null ? 'Surah $surahId' : 'Recitation');
         final artist = item?.artist ?? '';
         return GlassPanel(
           radius: 22,
@@ -298,9 +355,7 @@ class _NowPlayingBar extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge
+                      style: Theme.of(context).textTheme.labelLarge
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     if (artist.isNotEmpty)
@@ -309,10 +364,8 @@ class _NowPlayingBar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                   ],
                 ),
@@ -413,8 +466,8 @@ class _SurahHeader extends StatelessWidget {
                       : 'Audio unavailable for this reciter',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
@@ -430,6 +483,7 @@ class _VerseCard extends StatelessWidget {
     required this.verse,
     required this.isBookmarked,
     required this.isAnchor,
+    required this.isActive,
     required this.fontSize,
     required this.isPlaying,
     required this.audioAvailable,
@@ -440,6 +494,7 @@ class _VerseCard extends StatelessWidget {
   final Verse verse;
   final bool isBookmarked;
   final bool isAnchor;
+  final bool isActive;
   final double fontSize;
   final bool isPlaying;
   final bool audioAvailable;
@@ -450,56 +505,76 @@ class _VerseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final translation = cleanTranslationText(verse.translation);
-    return GlassPanel(
-      radius: 22,
-      blur: 0,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              GlassBadge(child: Text('${verse.number}')),
-              const Spacer(),
-              IconButton(
-                tooltip: isPlaying ? 'Pause audio' : 'Play surah audio',
-                icon: Icon(
-                  isPlaying
-                      ? Icons.pause_circle_outline_rounded
-                      : Icons.play_circle_outline_rounded,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isActive
+              ? scheme.onSurface.withValues(alpha: .55)
+              : Colors.transparent,
+          width: 1.4,
+        ),
+        boxShadow: isActive
+            ? [
+                BoxShadow(
+                  color: scheme.onSurface.withValues(alpha: .10),
+                  blurRadius: 26,
                 ),
-                onPressed: audioAvailable ? onPlay : null,
+              ]
+            : null,
+      ),
+      child: GlassPanel(
+        radius: 22,
+        blur: 0,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                GlassBadge(child: Text('${verse.number}')),
+                const Spacer(),
+                IconButton(
+                  tooltip: isPlaying ? 'Pause audio' : 'Play surah audio',
+                  icon: Icon(
+                    isPlaying
+                        ? Icons.pause_circle_outline_rounded
+                        : Icons.play_circle_outline_rounded,
+                  ),
+                  onPressed: audioAvailable ? onPlay : null,
+                ),
+                IconButton(
+                  tooltip: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
+                  icon: Icon(
+                    isBookmarked
+                        ? Icons.bookmark
+                        : Icons.bookmark_border_rounded,
+                  ),
+                  onPressed: onToggleBookmark,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SelectableText(
+              verse.arabic,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontSize: fontSize,
+                height: 2,
+                color: scheme.onSurface,
               ),
-              IconButton(
-                tooltip: isBookmarked ? 'Remove bookmark' : 'Add bookmark',
-                icon: Icon(
-                  isBookmarked ? Icons.bookmark : Icons.bookmark_border_rounded,
-                ),
-                onPressed: onToggleBookmark,
+            ),
+            if (translation.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              SelectableText(
+                translation,
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant, height: 1.6),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          SelectableText(
-            verse.arabic,
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontSize: fontSize,
-              height: 2,
-              color: scheme.onSurface,
-            ),
-          ),
-          if (translation.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            SelectableText(
-              translation,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    height: 1.6,
-                  ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }

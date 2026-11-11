@@ -6,6 +6,7 @@ import 'package:quriva/features/quran/data/quran_repository.dart';
 import 'package:quriva/features/quran/domain/quran_models.dart';
 import 'package:quriva/features/settings/presentation/preferences.dart';
 import 'package:quriva/shared/widgets/glass.dart';
+import 'package:quriva/shared/widgets/landscape_background.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -50,9 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             const SizedBox(height: 2),
                             Text(
                               'Read. Reflect. Live.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
+                              style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: Theme.of(context)
                                         .colorScheme
@@ -90,7 +89,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       FilterChip(
                         label: const Text('Audio only'),
                         selected: _audioOnly,
-                        onSelected: (value) => setState(() => _audioOnly = value),
+                        onSelected: (value) =>
+                            setState(() => _audioOnly = value),
                       ),
                     ],
                   ),
@@ -107,7 +107,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: TextField(
-                            onChanged: (value) => setState(() => _query = value),
+                            onChanged: (value) =>
+                                setState(() => _query = value),
                             decoration: const InputDecoration.collapsed(
                               hintText: 'Filter by name or number',
                             ),
@@ -143,8 +144,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               final available = catalog.value ?? const <int, String>{};
               final filtered = items
                   .where(_matchesQuery)
-                  .where((chapter) =>
-                      !_audioOnly || available.containsKey(chapter.id))
+                  .where(
+                    (chapter) =>
+                        !_audioOnly || available.containsKey(chapter.id),
+                  )
                   .toList();
               if (filtered.isEmpty) {
                 return SliverFillRemaining(
@@ -159,7 +162,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               }
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 132),
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 200),
                 sliver: SliverList.builder(
                   itemCount: filtered.length,
                   itemBuilder: (context, index) =>
@@ -192,10 +195,7 @@ class _ContinueHero extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (progress == null) {
-      return const GlassPanel(
-        radius: 26,
-        child: _HeroBody(),
-      );
+      return const GlassPanel(radius: 26, child: _HeroBody());
     }
     final language = ref.watch(appLanguageProvider);
     final chapters = ref.watch(chaptersProvider(language));
@@ -219,9 +219,7 @@ class _ContinueHero extends ConsumerWidget {
               children: [
                 Text(
                   'Continue reading',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
+                  style: Theme.of(context).textTheme.labelLarge
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
@@ -229,13 +227,13 @@ class _ContinueHero extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_rounded, size: 18),
+          const LandscapeArtwork(size: 46, radius: 12),
         ],
       ),
     );
@@ -249,19 +247,30 @@ class _HeroBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        GlassBadge(
-          child: Icon(
-            Icons.auto_stories_rounded,
-            size: 20,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        const LandscapeArtwork(size: 72, radius: 18),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'The Quran, beautifully simple.',
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Pick a reciter and follow along ayah by ayah.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'The Quran, beautifully simple.',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+        Icon(
+          Icons.chevron_right_rounded,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ],
     );
@@ -304,16 +313,14 @@ class _ReciterChip extends ConsumerWidget {
                   reciterName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
+                  style: Theme.of(context).textTheme.labelLarge
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -333,9 +340,8 @@ Future<void> _showReciterSheet(BuildContext context, WidgetRef ref) async {
       initialChildSize: .72,
       maxChildSize: .95,
       expand: false,
-      builder: (buildContext, sheetController) => _ReciterSheet(
-        scrollController: sheetController,
-      ),
+      builder: (buildContext, sheetController) =>
+          _ReciterSheet(scrollController: sheetController),
     ),
   );
 }
@@ -407,16 +413,14 @@ class _SurahTile extends StatelessWidget {
                     chapter.nameSimple,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
+                    style: Theme.of(context).textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   Text(
                     '${chapter.revelationLabel} · ${chapter.versesCount} verses',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

@@ -20,7 +20,9 @@ class Chapter {
       revelationPlace: json['revelation_place'] as String? ?? '',
       versesCount: json['verses_count'] as int? ?? 0,
       translatedName:
-          translatedName?['name'] as String? ?? json['name_simple'] as String? ?? '',
+          translatedName?['name'] as String? ??
+          json['name_simple'] as String? ??
+          '',
     );
   }
 
@@ -75,10 +77,10 @@ class ChapterInfo {
   });
 
   factory ChapterInfo.fromJson(Map<String, dynamic> json) => ChapterInfo(
-        shortText: json['short_text'] as String? ?? '',
-        textHtml: json['text'] as String? ?? '',
-        source: json['source'] as String? ?? '',
-      );
+    shortText: json['short_text'] as String? ?? '',
+    textHtml: json['text'] as String? ?? '',
+    source: json['source'] as String? ?? '',
+  );
 
   final String shortText;
   final String textHtml;
@@ -86,23 +88,20 @@ class ChapterInfo {
 }
 
 class Reciter {
-  const Reciter({
-    required this.id,
-    required this.name,
-    required this.style,
-  });
+  const Reciter({required this.id, required this.name, required this.style});
 
   factory Reciter.fromJson(Map<String, dynamic> json) => Reciter(
-        id: json['id'] as int,
-        name: json['reciter_name'] as String? ?? 'Unknown reciter',
-        style: json['style'] as String?,
-      );
+    id: json['id'] as int,
+    name: json['reciter_name'] as String? ?? 'Unknown reciter',
+    style: json['style'] as String?,
+  );
 
   final int id;
   final String name;
   final String? style;
 
-  String get displayName => style == null || style!.isEmpty ? name : '$name ($style)';
+  String get displayName =>
+      style == null || style!.isEmpty ? name : '$name ($style)';
 }
 
 class TranslationResource {
@@ -137,15 +136,15 @@ class SearchPage {
   });
 
   factory SearchPage.fromJson(Map<String, dynamic> json) => SearchPage(
-        query: json['query'] as String? ?? '',
-        totalResults: json['total_results'] as int? ?? 0,
-        currentPage: json['current_page'] as int? ?? 1,
-        totalPages: json['total_pages'] as int? ?? 1,
-        results: [
-          for (final item in (json['results'] as List? ?? []))
-            SearchVerseResult.fromJson(item as Map<String, dynamic>),
-        ],
-      );
+    query: json['query'] as String? ?? '',
+    totalResults: json['total_results'] as int? ?? 0,
+    currentPage: json['current_page'] as int? ?? 1,
+    totalPages: json['total_pages'] as int? ?? 1,
+    results: [
+      for (final item in (json['results'] as List? ?? []))
+        SearchVerseResult.fromJson(item as Map<String, dynamic>),
+    ],
+  );
 
   final String query;
   final int totalResults;
@@ -187,4 +186,39 @@ class SearchTranslation {
 
   final String name;
   final String text;
+}
+
+/// Timeline entry mapping an ayah to its position inside a chapter recitation.
+class VerseTimestamp {
+  const VerseTimestamp({
+    required this.verseKey,
+    required this.fromMs,
+    required this.toMs,
+  });
+
+  factory VerseTimestamp.fromJson(Map<String, dynamic> json) => VerseTimestamp(
+    verseKey: json['verse_key'] as String? ?? '',
+    fromMs: (json['timestamp_from'] as num?)?.toInt() ?? 0,
+    toMs: (json['timestamp_to'] as num?)?.toInt() ?? 0,
+  );
+
+  final String verseKey;
+  final int fromMs;
+  final int toMs;
+
+  int get chapterId => int.tryParse(verseKey.split(':').first) ?? 0;
+  int get verseNumber => int.tryParse(verseKey.split(':').last) ?? 0;
+  Duration get from => Duration(milliseconds: fromMs);
+  Duration get to => Duration(milliseconds: toMs);
+}
+
+/// Chapter recitation with optional ayah timestamps (lyrics-style sync).
+class ChapterAudioTimeline {
+  const ChapterAudioTimeline({
+    required this.audioUrl,
+    required this.timestamps,
+  });
+
+  final String? audioUrl;
+  final List<VerseTimestamp> timestamps;
 }

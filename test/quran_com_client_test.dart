@@ -5,19 +5,18 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:quriva/core/api/quran_com_client.dart';
 
-http.Client _mockClient(
-  String path,
-  Map<String, String> query,
-  Object body,
-) {
+http.Client _mockClient(String path, Map<String, String> query, Object body) {
   return MockClient((request) async {
     final actual = request.url;
     final expected = Uri.https('api.quran.com', '/api/v4$path');
     expect(actual.host, 'api.quran.com');
     if (actual.path == expected.path) {
       for (final entry in query.entries) {
-        expect(actual.queryParameters[entry.key], entry.value,
-            reason: '$path query ${entry.key}');
+        expect(
+          actual.queryParameters[entry.key],
+          entry.value,
+          reason: '$path query ${entry.key}',
+        );
       }
     }
     return http.Response(
@@ -31,18 +30,22 @@ http.Client _mockClient(
 void main() {
   test('client parses chapters response', () async {
     final client = QuranComClient(
-      client: _mockClient('/chapters', {'language': 'en'}, {
-        'chapters': [
-          {
-            'id': 112,
-            'name_simple': 'Al-Ikhlas',
-            'name_arabic': 'الإخلاص',
-            'revelation_place': 'makkah',
-            'verses_count': 4,
-            'translated_name': {'name': 'The Sincerity'},
-          },
-        ],
-      }),
+      client: _mockClient(
+        '/chapters',
+        {'language': 'en'},
+        {
+          'chapters': [
+            {
+              'id': 112,
+              'name_simple': 'Al-Ikhlas',
+              'name_arabic': 'الإخلاص',
+              'revelation_place': 'makkah',
+              'verses_count': 4,
+              'translated_name': {'name': 'The Sincerity'},
+            },
+          ],
+        },
+      ),
     );
     final chapters = await client.fetchChapters('en');
     expect(chapters, hasLength(1));
@@ -78,8 +81,7 @@ void main() {
           'id': 1133,
           'chapter_id': 112,
           'format': 'mp3',
-          'audio_url':
-              'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/112.mp3',
+          'audio_url': 'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/112.mp3',
         },
       }),
     );
@@ -134,26 +136,20 @@ void main() {
 
   test('client parses per-reciter catalog', () async {
     final client = QuranComClient(
-      client: _mockClient(
-        '/chapter_recitations/7',
-        const {},
-        {
-          'audio_files': [
-            {
-              'id': 911,
-              'chapter_id': 1,
-              'audio_url':
-                  'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/1.mp3',
-            },
-            {
-              'id': 17774,
-              'chapter_id': 112,
-              'audio_url':
-                  'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/112.mp3',
-            },
-          ],
-        },
-      ),
+      client: _mockClient('/chapter_recitations/7', const {}, {
+        'audio_files': [
+          {
+            'id': 911,
+            'chapter_id': 1,
+            'audio_url': 'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/1.mp3',
+          },
+          {
+            'id': 17774,
+            'chapter_id': 112,
+            'audio_url': 'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/112.mp3',
+          },
+        ],
+      }),
     );
     final catalog = await client.fetchReciterCatalog(7);
     expect(catalog, containsPair(112, endsWith('112.mp3')));
@@ -161,4 +157,40 @@ void main() {
     client.close();
   });
 
+  test('client parses chapter audio timeline with ayah timestamps', () async {
+    final client = QuranComClient(
+      client: _mockClient(
+        '/chapter_recitations/7/1',
+        {'segments': 'true'},
+        {
+          'audio_file': {
+            'id': 911,
+            'chapter_id': 1,
+            'audio_url': 'https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/1.mp3',
+            'timestamps': [
+              {
+                'verse_key': '1:1',
+                'timestamp_from': 0,
+                'timestamp_to': 6090,
+                'duration': 6090,
+              },
+              {
+                'verse_key': '1:2',
+                'timestamp_from': 6090,
+                'timestamp_to': 11680,
+                'duration': 5590,
+              },
+            ],
+          },
+        },
+      ),
+    );
+    final timeline = await client.fetchChapterAudioTimeline(7, 1);
+    expect(timeline.audioUrl, endsWith('1.mp3'));
+    expect(timeline.timestamps, hasLength(2));
+    expect(timeline.timestamps.first.verseKey, '1:1');
+    expect(timeline.timestamps.first.verseNumber, 1);
+    expect(timeline.timestamps.last.fromMs, 6090);
+    client.close();
+  });
 }

@@ -30,20 +30,18 @@ class QuranRepository {
       ];
     }
     final chapters = await client.fetchChapters(language);
-    await database.insertCachedChapters(
-      [
-        for (final chapter in chapters)
-          ChapterCacheCompanion.insert(
-            language: language,
-            chapterId: chapter.id,
-            nameSimple: chapter.nameSimple,
-            nameArabic: chapter.nameArabic,
-            revelationPlace: chapter.revelationPlace,
-            versesCount: chapter.versesCount,
-            translatedName: chapter.translatedName,
-          ),
-      ],
-    );
+    await database.insertCachedChapters([
+      for (final chapter in chapters)
+        ChapterCacheCompanion.insert(
+          language: language,
+          chapterId: chapter.id,
+          nameSimple: chapter.nameSimple,
+          nameArabic: chapter.nameArabic,
+          revelationPlace: chapter.revelationPlace,
+          versesCount: chapter.versesCount,
+          translatedName: chapter.translatedName,
+        ),
+    ]);
     return chapters;
   }
 
@@ -72,8 +70,9 @@ class QuranRepository {
     }
     final rows = <VerseCacheCompanion>[];
     for (final verse in arabicVerses) {
-      final translation =
-          translations.length > verse.number - 1 ? translations[verse.number - 1] : '';
+      final translation = translations.length > verse.number - 1
+          ? translations[verse.number - 1]
+          : '';
       rows.add(
         VerseCacheCompanion(
           chapterId: Value(chapterId),
@@ -91,8 +90,9 @@ class QuranRepository {
           chapterId: chapterId,
           number: verse.number,
           arabic: verse.text,
-          translation:
-              translations.length > verse.number - 1 ? translations[verse.number - 1] : '',
+          translation: translations.length > verse.number - 1
+              ? translations[verse.number - 1]
+              : '',
         ),
     ];
   }
@@ -119,6 +119,13 @@ class QuranRepository {
     );
     return info;
   }
+
+  /// Ayah timestamps for a chapter recitation (not cached: small payload,
+  /// fetched when the reader loads/plays a surah).
+  Future<ChapterAudioTimeline> getChapterAudioTimeline(
+    int chapterId,
+    int recitationId,
+  ) => client.fetchChapterAudioTimeline(recitationId, chapterId);
 
   Future<String?> getChapterAudioUrl(int chapterId, int recitationId) async {
     final cached = await database.getCachedAudioUrl(chapterId, recitationId);
@@ -170,34 +177,53 @@ final chaptersProvider = FutureProvider.family<List<Chapter>, String>(
   (ref, language) => ref.watch(quranRepositoryProvider).getChapters(language),
 );
 
-final readerProvider =
-    FutureProvider.family<List<Verse>, (int, int)>((ref, args) {
+final readerProvider = FutureProvider.family<List<Verse>, (int, int)>((
+  ref,
+  args,
+) {
   final (chapterId, translationId) = args;
   return ref.watch(quranRepositoryProvider).getVerses(chapterId, translationId);
 });
 
-final chapterInfoProvider =
-    FutureProvider.family<ChapterInfo?, (int, String)>((ref, args) {
+final chapterInfoProvider = FutureProvider.family<ChapterInfo?, (int, String)>((
+  ref,
+  args,
+) {
   final (chapterId, language) = args;
   return ref.watch(quranRepositoryProvider).getChapterInfo(chapterId, language);
 });
 
-final chapterAudioUrlProvider =
-    FutureProvider.family<String?, (int, int)>((ref, args) {
+final chapterAudioUrlProvider = FutureProvider.family<String?, (int, int)>((
+  ref,
+  args,
+) {
   final (chapterId, recitationId) = args;
   return ref
       .watch(quranRepositoryProvider)
       .getChapterAudioUrl(chapterId, recitationId);
 });
 
-final recitersProvider =
-    FutureProvider.family<List<Reciter>, String>((ref, language) {
+/// Chapter audio url + ayah timestamps for lyrics-style highlighting.
+final chapterAudioTimelineProvider =
+    FutureProvider.family<ChapterAudioTimeline, (int, int)>((ref, args) {
+      final (chapterId, recitationId) = args;
+      return ref
+          .watch(quranRepositoryProvider)
+          .getChapterAudioTimeline(chapterId, recitationId);
+    });
+
+final recitersProvider = FutureProvider.family<List<Reciter>, String>((
+  ref,
+  language,
+) {
   return ref.watch(quranRepositoryProvider).getReciters(language);
 });
 
 /// chapterId → audio url for one reciter.
-final reciterCatalogProvider =
-    FutureProvider.family<Map<int, String>, int>((ref, recitationId) {
+final reciterCatalogProvider = FutureProvider.family<Map<int, String>, int>((
+  ref,
+  recitationId,
+) {
   return ref.watch(quranRepositoryProvider).getReciterCatalog(recitationId);
 });
 
@@ -217,8 +243,8 @@ final reciterCountsProvider = Provider<Map<int, int>>((ref) {
 
 final translationsProvider =
     FutureProvider.family<List<TranslationResource>, String>((ref, language) {
-  return ref.watch(quranRepositoryProvider).getTranslations(language);
-});
+      return ref.watch(quranRepositoryProvider).getTranslations(language);
+    });
 
 final readingProgressProvider = FutureProvider<ReadingProgressData?>(
   (ref) => ref.watch(databaseProvider).loadProgress(),
