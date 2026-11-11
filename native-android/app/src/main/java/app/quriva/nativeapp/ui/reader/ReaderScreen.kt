@@ -2,6 +2,7 @@ package app.quriva.nativeapp.ui.reader
 
 import android.text.Html
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -201,6 +202,12 @@ fun ReaderScreen(
                         active = thisPlaying && verse.number == activeVerse && activeVerse > 0,
                         bookmarked = state.bookmarkedVerses.contains(verse.number),
                         onToggleBookmark = { viewModel.toggleBookmark(verse.number) },
+                        onClick = {
+                            if (thisPlaying) {
+                                val ts = state.timeline?.timestamps?.firstOrNull { it.verseNumber == verse.number }
+                                if (ts != null) PlaybackController.seekTo(ts.fromMs.toLong())
+                            }
+                        },
                     )
                 }
             }
@@ -246,6 +253,7 @@ private fun VerseCard(
     active: Boolean,
     bookmarked: Boolean,
     onToggleBookmark: () -> Unit,
+    onClick: () -> Unit = {},
 ) {
     val bg by animateColorAsState(
         if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
@@ -253,7 +261,7 @@ private fun VerseCard(
         label = "verse-bg",
     )
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = bg),
     ) {
         Column(
