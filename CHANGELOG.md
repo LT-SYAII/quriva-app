@@ -8,6 +8,16 @@ Format: Keep a Changelog-ish, versioned per SemVer.
 ### Changed
 - (nothing yet)
 
+## [0.4.2] — 2026-11-11
+
+### Changed
+- Lightened Flutter UI for smoother performance: removed real-time backdrop blur
+  from persistent surfaces (bottom nav, mini player, reader bars, lyrics/search
+  panels), simplified reader verse rendering (single active-verse listener,
+  lighter active card styling), throttled reading-progress writes during scroll,
+  precomputed landscape background star positions, reduced heavy now-playing
+  artwork effects, and removed the mini-player entrance animation.
+
 ## [0.4.1] — 2026-11-11
 
 ### Fixed
